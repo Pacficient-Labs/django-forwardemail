@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-forwardemail"
-version = "0.1.0"
+version = "1.0.0"
 description = "Django integration for ForwardEmail API with multi-site support"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "PacNPal", email = "pac@pacnp.al"},
     {name = "Pacficient Labs"},
@@ -125,3 +125,8 @@ python_files = ["test_*.py", "*_test.py", "tests.py"]
 addopts = "--cov=django_forwardemail --cov-report=term-missing --cov-report=html --ds=tests.settings"
 testpaths = ["tests"]
 django_find_project = false
+
+[dependency-groups]
+dev = [
+    "twine>=6.1.0",
+]

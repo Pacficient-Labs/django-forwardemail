@@ -74,7 +74,22 @@ class ForwardEmailService:
             else:
                 raise ImproperlyConfigured("Could not determine site from request")
         elif site is None:
-            raise ImproperlyConfigured("Either request or site must be provided")
+            # Try to get the default site if no site or request provided
+            try:
+                site = Site.objects.get_current()
+            except Site.DoesNotExist:
+                # Fall back to the first site
+                try:
+                    site = Site.objects.first()
+                    if site is None:
+                        raise ImproperlyConfigured(
+                            "No sites configured. Please create a Site object."
+                        )
+                except Exception as e:
+                    raise ImproperlyConfigured(
+                        "Could not determine site. Please provide either 'request' or 'site' parameter, "
+                        "or ensure at least one Site object exists in the database."
+                    ) from e
 
         try:
             # Fetch the email configuration for the current site

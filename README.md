@@ -366,11 +366,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### 0.1.0 (2025-01-30)
+### 1.0.0 (2025-08-30)
 
-- Initial release
-- Multi-site email configuration support
-- Django email backend integration
-- ForwardEmail API service class
-- Django admin interface
-- Comprehensive documentation and examples
+- **STABLE RELEASE** - Production-ready ForwardEmail integration
+- Multi-site email configuration support with automatic site detection
+- Django email backend integration with full compatibility
+- ForwardEmail API service class with comprehensive error handling
+- Django admin interface for easy configuration management
+- Full backward compatibility with existing Django email patterns
+- Comprehensive test suite covering Django 4.2+ and Python 3.10+
+- Modern type hints and logging integration
+- Extensive documentation and usage examples
+- Automated CI/CD pipeline with PyPI publishing
