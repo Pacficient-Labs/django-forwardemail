@@ -1,0 +1,123 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10", "3.11", "3.12", "3.13"]
+        django-version: [3.2, 4.0, 4.1, 4.2, 5.0, 5.1]
+        exclude:
+          # Django 5.0+ requires Python 3.10+
+          - python-version: 3.8
+            django-version: 5.0
+          - python-version: 3.9
+            django-version: 5.0
+          - python-version: 3.8
+            django-version: 5.1
+          - python-version: 3.9
+            django-version: 5.1
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install Django~=${{ matrix.django-version }}.0
+        pip install -e ".[dev]"
+
+    - name: Run Django checks
+      run: |
+        # Test Django integration
+        python -c "
+        import os
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
+        import django
+        django.setup()
+        from django.core.management import execute_from_command_line
+        execute_from_command_line(['manage.py', 'check'])
+        "
+
+    - name: Run migrations
+      run: |
+        # Test migrations work
+        python -c "
+        import os
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
+        import django
+        django.setup()
+        from django.core.management import execute_from_command_line
+        execute_from_command_line(['manage.py', 'migrate', '--run-syncdb'])
+        "
+
+    - name: Test Django admin integration
+      run: |
+        # Test admin integration
+        python -c "
+        import os
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
+        import django
+        django.setup()
+        from django.contrib import admin
+        from django_forwardemail.models import EmailConfiguration
+        assert EmailConfiguration in admin.site._registry
+        print('✅ Django admin integration working')
+        "
+
+    - name: Test package imports
+      run: |
+        python -c "
+        # Test all imports work
+        from django_forwardemail import __version__
+        from django_forwardemail.services import ForwardEmailService, EmailService
+        from django_forwardemail.backends import ForwardEmailBackend
+        from django_forwardemail.models import EmailConfiguration
+        from django_forwardemail.admin import EmailConfigurationAdmin
+        print(f'✅ All imports successful, version: {__version__}')
+        "
+
+    - name: Run tests
+      run: |
+        pytest --cov=django_forwardemail --cov-report=xml --verbose
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run black
+      run: black --check django_forwardemail/
+
+    - name: Run flake8
+      run: flake8 django_forwardemail/
+
+    - name: Run mypy
+      run: mypy django_forwardemail/
