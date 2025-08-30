@@ -7,7 +7,10 @@ Django integration for ForwardEmail API with multi-site support.
    :maxdepth: 2
    :caption: Contents:
 
-   self
+   installation
+   configuration
+   usage
+   api
 
 Overview
 --------
@@ -57,6 +60,14 @@ Requirements
 * Django 4.2+
 * Python 3.8+
 * ForwardEmail account and API key
+
+Documentation Sections
+----------------------
+
+* :doc:`installation` - Installation and setup guide
+* :doc:`configuration` - Configuration options and multi-site setup
+* :doc:`usage` - Usage examples and best practices
+* :doc:`api` - Complete API reference
 
 Links
 -----
