@@ -62,7 +62,7 @@ Repository = "https://github.com/Pacficient-Labs/django-forwardemail.git"
 "Bug Tracker" = "https://github.com/Pacficient-Labs/django-forwardemail/issues"
 
 [tool.setuptools.packages.find]
-include = ["django_forwardemail*"]
+include = ["django_forwardemail*", "tests*"]
 
 [tool.setuptools.package-data]
 django_forwardemail = ["templates/**/*", "static/**/*"]
@@ -123,4 +123,6 @@ known-first-party = ["django_forwardemail"]
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
 python_files = ["test_*.py", "*_test.py", "tests.py"]
-addopts = "--cov=django_forwardemail --cov-report=term-missing --cov-report=html"
+addopts = "--cov=django_forwardemail --cov-report=term-missing --cov-report=html --ds=tests.settings"
+testpaths = ["tests"]
+django_find_project = false
