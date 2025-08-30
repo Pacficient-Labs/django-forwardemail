@@ -1,17 +1,15 @@
 import base64
-import json
 import logging
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, TYPE_CHECKING
 
 import requests
 from django.conf import settings
-from django.contrib.sites.models import Site
-from django.contrib.sites.shortcuts import get_current_site
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail.message import sanitize_address
 from django.http import HttpRequest
 
-from .models import EmailConfiguration
+if TYPE_CHECKING:
+    from django.contrib.sites.models import Site
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +35,7 @@ class ForwardEmailService:
         html: Optional[str] = None,
         reply_to: Optional[str] = None,
         request: Optional[HttpRequest] = None,
-        site: Optional[Site] = None,
+        site: Optional["Site"] = None,
         base_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
@@ -61,6 +59,11 @@ class ForwardEmailService:
             ImproperlyConfigured: If site configuration is missing
             Exception: If email sending fails
         """
+        # Import Django models here to avoid import-time configuration issues
+        from django.contrib.sites.models import Site
+        from django.contrib.sites.shortcuts import get_current_site
+        from .models import EmailConfiguration
+
         # Get the site configuration
         if site is None and request is not None:
             site_obj = get_current_site(request)
@@ -68,9 +71,13 @@ class ForwardEmailService:
             if hasattr(site_obj, "pk") and isinstance(site_obj, Site):
                 site = site_obj
             else:
-                raise ImproperlyConfigured("Could not determine site from request")
+                raise ImproperlyConfigured(
+                    "Could not determine site from request"
+                )
         elif site is None:
-            raise ImproperlyConfigured("Either request or site must be provided")
+            raise ImproperlyConfigured(
+                "Either request or site must be provided"
+            )
 
         try:
             # Fetch the email configuration for the current site
@@ -153,9 +160,12 @@ class ForwardEmailService:
                 )
 
             if response.status_code != 200:
-                error_message = response.text if response.text else "Unknown error"
+                error_message = (
+                    response.text if response.text else "Unknown error"
+                )
                 raise Exception(
-                    f"Failed to send email (Status {response.status_code}): {error_message}"
+                    f"Failed to send email (Status {response.status_code}): "
+                    f"{error_message}"
                 )
 
             return response.json()

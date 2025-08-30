@@ -117,7 +117,7 @@ jobs:
       run: black --check django_forwardemail/
 
     - name: Run flake8
-      run: flake8 django_forwardemail/
+      run: flake8 django_forwardemail/ --max-line-length=88 --ignore=C901,W503
 
     - name: Run mypy
       run: mypy django_forwardemail/

@@ -30,7 +30,10 @@ class EmailConfigurationAdmin(admin.ModelAdmin):
             "Email Settings",
             {
                 "fields": ("api_key", ("from_name", "from_email"), "reply_to"),
-                "description": 'Configure the email settings. The From field in emails will appear as "From Name <from@email.com>"',
+                "description": (
+                    'Configure the email settings. The From field in emails '
+                    'will appear as "From Name <from@email.com>"'
+                ),
             },
         ),
         (
