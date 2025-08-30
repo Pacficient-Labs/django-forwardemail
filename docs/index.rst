@@ -7,13 +7,7 @@ Django integration for ForwardEmail API with multi-site support.
    :maxdepth: 2
    :caption: Contents:
 
-   installation
-   quickstart
-   configuration
-   api
-   troubleshooting
-   contributing
-   changelog
+   self
 
 Overview
 --------
