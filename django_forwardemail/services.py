@@ -31,12 +31,12 @@ class ForwardEmailService:
         to: str,
         subject: str,
         text: str,
-        from_email: Optional[str] = None,
-        html: Optional[str] = None,
-        reply_to: Optional[str] = None,
-        request: Optional[HttpRequest] = None,
+        from_email: str | None = None,
+        html: str | None = None,
+        reply_to: str | None = None,
+        request: HttpRequest | None = None,
         site: Optional["Site"] = None,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
     ) -> dict[str, Any]:
         """
         Send an email through the ForwardEmail API.

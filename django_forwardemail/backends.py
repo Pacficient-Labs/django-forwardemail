@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail.message import (
@@ -31,7 +31,7 @@ class ForwardEmailBackend(BaseEmailBackend):
             **kwargs: Additional keyword arguments, including 'site'
         """
         super().__init__(fail_silently=fail_silently)
-        self.site: Optional[Site] = kwargs.get("site", None)
+        self.site: Site | None = kwargs.get("site", None)
 
     def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
         """
@@ -94,7 +94,8 @@ class ForwardEmailBackend(BaseEmailBackend):
             config = EmailConfiguration.objects.get(site=site)
         except EmailConfiguration.DoesNotExist as e:
             raise ValueError(
-                f"Email configuration not found for site: {site.domain}") from e
+                f"Email configuration not found for site: {site.domain}"
+            ) from e
 
         # Get the from email, falling back to site's default if not provided
         from_email = None
