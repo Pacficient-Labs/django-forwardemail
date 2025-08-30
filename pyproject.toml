@@ -10,8 +10,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "PacNPal", email = "support@pacficient.com"},
-    {name = "Pacficient Labs", email = "labs@pacficient.com"},
+    {name = "PacNPal", email = "pac@pacnp.al"},
+    {name = "Pacficient Labs"},
 ]
 keywords = ["django", "email", "forwardemail", "api", "multi-site"]
 classifiers = [
@@ -50,6 +50,8 @@ dev = [
     "mypy>=0.800",
     "django-stubs>=1.7",
     "factory-boy>=3.2",
+    "twine>=4.0.0",
+    "build>=0.10.0",
 ]
 
 [project.urls]
