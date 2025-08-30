@@ -13,7 +13,7 @@ A Django package for integrating with the [ForwardEmail](https://forwardemail.ne
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10+
 - Django 3.2+
 
 ## Installation

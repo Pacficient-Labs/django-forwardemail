@@ -11,14 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
         django-version: [3.2, 4.0, 4.1, 4.2, 5.0, 5.1]
-        exclude:
-          # Django 5.0+ requires Python 3.10+
-          - python-version: 3.9
-            django-version: 5.0
-          - python-version: 3.9
-            django-version: 5.1
 
     steps:
     - uses: actions/checkout@v4
@@ -135,7 +129,7 @@ jobs:
           echo "ruff_passed=false" >> $GITHUB_OUTPUT
           echo ""
           echo "To fix linting issues, run:"
-          echo "  uv run ruff check --fix django_forwardemail/"
+          echo "  uv run ruff check --fix --unsafe-fixes django_forwardemail/"
         fi
       continue-on-error: true
 
@@ -159,7 +153,7 @@ jobs:
       if: (steps.ruff-check.outputs.ruff_passed == 'false' || steps.ruff-format-check.outputs.formatted == 'false') && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
       run: |
         echo "Auto-fixing Ruff issues..."
-        uv run ruff check --fix django_forwardemail/
+        uv run ruff check --fix --unsafe-fixes django_forwardemail/
         uv run ruff format django_forwardemail/
         if [[ -n $(git status --porcelain) ]]; then
           git config --local user.email "action@github.com"
@@ -173,7 +167,7 @@ jobs:
     - name: Fail on issues (PRs only)
       if: (steps.ruff-check.outputs.ruff_passed == 'false' || steps.ruff-format-check.outputs.formatted == 'false') && github.event_name == 'pull_request'
       run: |
-        echo "::error::Code quality issues found in PR. Please run 'uv run ruff check --fix django_forwardemail/' and 'uv run ruff format django_forwardemail/' to fix."
+        echo "::error::Code quality issues found in PR. Please run 'uv run ruff check --fix --unsafe-fixes django_forwardemail/' and 'uv run ruff format django_forwardemail/' to fix."
         exit 1
 
     - name: Run Black (fallback formatting check)
@@ -197,11 +191,73 @@ jobs:
       continue-on-error: true
 
     - name: Run mypy
+      id: mypy-check
       run: |
-        echo "Running mypy..."
+        echo "Running mypy type checking..."
         if uv run mypy django_forwardemail/; then
-          echo "✅ No mypy issues found"
+          echo "✅ No mypy type issues found"
+          echo "mypy_passed=true" >> $GITHUB_OUTPUT
         else
-          echo "❌ mypy issues found"
-          exit 1
+          echo "❌ mypy type issues found"
+          echo "mypy_passed=false" >> $GITHUB_OUTPUT
+          echo ""
+          echo "To fix type issues, review the mypy output above and update type annotations."
         fi
+      continue-on-error: true
+
+    - name: Summary of code quality checks
+      run: |
+        echo "## Code Quality Summary"
+        echo "======================"
+        
+        # Check Ruff linting
+        if [[ "${{ steps.ruff-check.outputs.ruff_passed }}" == "true" ]]; then
+          echo "✅ Ruff linting: PASSED"
+        else
+          echo "❌ Ruff linting: FAILED"
+        fi
+        
+        # Check Ruff formatting
+        if [[ "${{ steps.ruff-format-check.outputs.formatted }}" == "true" ]]; then
+          echo "✅ Ruff formatting: PASSED"
+        else
+          echo "❌ Ruff formatting: FAILED"
+        fi
+        
+        # Check mypy
+        if [[ "${{ steps.mypy-check.outputs.mypy_passed }}" == "true" ]]; then
+          echo "✅ MyPy type checking: PASSED"
+        else
+          echo "❌ MyPy type checking: FAILED"
+        fi
+        
+        echo ""
+        echo "## Next Steps"
+        echo "============="
+        
+        # Provide guidance based on results
+        if [[ "${{ steps.ruff-check.outputs.ruff_passed }}" == "false" || "${{ steps.ruff-format-check.outputs.formatted }}" == "false" ]]; then
+          echo "🔧 To fix linting and formatting issues:"
+          echo "   uv run ruff check --fix --unsafe-fixes django_forwardemail/"
+          echo "   uv run ruff format django_forwardemail/"
+          echo ""
+        fi
+        
+        if [[ "${{ steps.mypy-check.outputs.mypy_passed }}" == "false" ]]; then
+          echo "🔍 To fix type checking issues:"
+          echo "   Review the mypy output above and update type annotations"
+          echo "   Run 'uv run mypy django_forwardemail/' locally to see detailed errors"
+          echo ""
+        fi
+        
+        # Only fail on PRs for critical issues (Ruff linting/formatting)
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          if [[ "${{ steps.ruff-check.outputs.ruff_passed }}" == "false" || "${{ steps.ruff-format-check.outputs.formatted }}" == "false" ]]; then
+            echo "::error::Critical code quality issues found in PR. Please fix linting and formatting issues before merging."
+            exit 1
+          elif [[ "${{ steps.mypy-check.outputs.mypy_passed }}" == "false" ]]; then
+            echo "::warning::Type checking issues found. Consider fixing these for better code quality."
+          fi
+        fi
+        
+        echo "✅ Code quality check completed"

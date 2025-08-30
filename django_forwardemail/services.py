@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import requests
 from django.conf import settings
@@ -37,7 +37,7 @@ class ForwardEmailService:
         request: Optional[HttpRequest] = None,
         site: Optional["Site"] = None,
         base_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send an email through the ForwardEmail API.
 
@@ -93,11 +93,11 @@ class ForwardEmailService:
             if not reply_to:
                 reply_to = email_config.reply_to
 
-        except EmailConfiguration.DoesNotExist:
+        except EmailConfiguration.DoesNotExist as e:
             site_domain = site.domain if site else "unknown"
             raise ImproperlyConfigured(
                 f"Email configuration is missing for site: {site_domain}"
-            )
+            ) from e
 
         # Ensure the reply_to address is clean
         if reply_to:
@@ -167,10 +167,10 @@ class ForwardEmailService:
 
         except requests.RequestException as e:
             logger.error("ForwardEmail API request failed: %s", str(e))
-            raise Exception(f"Failed to send email: {str(e)}")
+            raise Exception(f"Failed to send email: {str(e)}") from e
         except Exception as e:
             logger.error("ForwardEmail service error: %s", str(e))
-            raise Exception(f"Failed to send email: {str(e)}")
+            raise Exception(f"Failed to send email: {str(e)}") from e
 
     @staticmethod
     def extract_email(email_string: str) -> str:

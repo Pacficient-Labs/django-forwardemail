@@ -92,8 +92,9 @@ class ForwardEmailBackend(BaseEmailBackend):
         # Get the site's email configuration
         try:
             config = EmailConfiguration.objects.get(site=site)
-        except EmailConfiguration.DoesNotExist:
-            raise ValueError(f"Email configuration not found for site: {site.domain}")
+        except EmailConfiguration.DoesNotExist as e:
+            raise ValueError(
+                f"Email configuration not found for site: {site.domain}") from e
 
         # Get the from email, falling back to site's default if not provided
         from_email = None
