@@ -1,14 +1,15 @@
-from typing import Optional, Sequence
+from typing import Optional, Sequence, TYPE_CHECKING
 from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail.message import (
     EmailMessage,
     EmailMultiAlternatives,
     sanitize_address,
 )
-from django.contrib.sites.models import Site
 
 from .services import ForwardEmailService
-from .models import EmailConfiguration
+
+if TYPE_CHECKING:
+    from django.contrib.sites.models import Site
 
 
 class ForwardEmailBackend(BaseEmailBackend):
@@ -82,6 +83,9 @@ class ForwardEmailBackend(BaseEmailBackend):
 
         if not site:
             raise ValueError("Either request or site must be provided")
+
+        # Import here to avoid import-time Django configuration issues
+        from .models import EmailConfiguration
 
         # Get the site's email configuration
         try:

@@ -71,13 +71,9 @@ class ForwardEmailService:
             if hasattr(site_obj, "pk") and isinstance(site_obj, Site):
                 site = site_obj
             else:
-                raise ImproperlyConfigured(
-                    "Could not determine site from request"
-                )
+                raise ImproperlyConfigured("Could not determine site from request")
         elif site is None:
-            raise ImproperlyConfigured(
-                "Either request or site must be provided"
-            )
+            raise ImproperlyConfigured("Either request or site must be provided")
 
         try:
             # Fetch the email configuration for the current site
@@ -160,9 +156,7 @@ class ForwardEmailService:
                 )
 
             if response.status_code != 200:
-                error_message = (
-                    response.text if response.text else "Unknown error"
-                )
+                error_message = response.text if response.text else "Unknown error"
                 raise Exception(
                     f"Failed to send email (Status {response.status_code}): "
                     f"{error_message}"
