@@ -79,6 +79,12 @@ jobs:
     - name: Test package imports
       run: |
         python -c "
+        # Configure Django settings before importing models
+        import os
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
+        import django
+        django.setup()
+        
         # Test all imports work
         from django_forwardemail import __version__
         from django_forwardemail.services import ForwardEmailService, EmailService

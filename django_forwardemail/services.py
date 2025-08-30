@@ -177,7 +177,8 @@ class ForwardEmailService:
         Extract clean email address from a string that may contain a name.
 
         Args:
-            email_string: Email string like "Name <email@domain.com>" or "email@domain.com"
+            email_string: Email string like "Name <email@domain.com>" or 
+                         "email@domain.com"
 
         Returns:
             Clean email address
