@@ -7,11 +7,11 @@ from .models import EmailConfiguration
 class EmailConfigurationAdmin(admin.ModelAdmin):
     """
     Django admin configuration for EmailConfiguration model.
-    
+
     Provides a user-friendly interface for managing ForwardEmail
     configurations across multiple sites.
     """
-    
+
     list_display = (
         "site",
         "from_name",
@@ -23,7 +23,7 @@ class EmailConfigurationAdmin(admin.ModelAdmin):
     search_fields = ("site__domain", "from_name", "from_email", "reply_to")
     readonly_fields = ("created_at", "updated_at")
     list_filter = ("site", "updated_at", "created_at")
-    
+
     fieldsets = (
         (None, {"fields": ("site",)}),
         (

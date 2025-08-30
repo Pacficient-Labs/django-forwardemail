@@ -65,7 +65,7 @@ class ForwardEmailService:
         if site is None and request is not None:
             site_obj = get_current_site(request)
             # Ensure we have a proper Site object, not RequestSite
-            if hasattr(site_obj, 'pk') and isinstance(site_obj, Site):
+            if hasattr(site_obj, "pk") and isinstance(site_obj, Site):
                 site = site_obj
             else:
                 raise ImproperlyConfigured("Could not determine site from request")
@@ -114,17 +114,18 @@ class ForwardEmailService:
 
         # Get base URL from settings or use default
         api_base_url = base_url or getattr(
-            settings,
-            'FORWARD_EMAIL_BASE_URL',
-            cls.DEFAULT_BASE_URL
+            settings, "FORWARD_EMAIL_BASE_URL", cls.DEFAULT_BASE_URL
         )
 
         # Log debug information if debug mode is enabled
-        if getattr(settings, 'DEBUG', False):
+        if getattr(settings, "DEBUG", False):
             site_domain = site.domain if site else "unknown"
             logger.debug(
                 "ForwardEmail API Request - From: %s, To: %s, Reply-To: %s, Site: %s",
-                from_email, to, reply_to, site_domain
+                from_email,
+                to,
+                reply_to,
+                site_domain,
             )
 
         # Create Basic auth header with API key as username and empty password
@@ -144,10 +145,11 @@ class ForwardEmailService:
             )
 
             # Log response details in debug mode
-            if getattr(settings, 'DEBUG', False):
+            if getattr(settings, "DEBUG", False):
                 logger.debug(
                     "ForwardEmail API Response - Status: %s, Body: %s",
-                    response.status_code, response.text
+                    response.status_code,
+                    response.text,
                 )
 
             if response.status_code != 200:

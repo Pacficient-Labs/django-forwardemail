@@ -11,23 +11,16 @@ class EmailConfiguration(models.Model):
     """
 
     api_key = models.CharField(
-        max_length=255,
-        help_text="ForwardEmail API key for authentication"
+        max_length=255, help_text="ForwardEmail API key for authentication"
     )
-    from_email = models.EmailField(
-        help_text="Default email address to send from"
-    )
+    from_email = models.EmailField(help_text="Default email address to send from")
     from_name = models.CharField(
         max_length=255,
         help_text="The name that will appear in the From field of emails",
     )
-    reply_to = models.EmailField(
-        help_text="Default reply-to email address"
-    )
+    reply_to = models.EmailField(help_text="Default reply-to email address")
     site = models.ForeignKey(
-        Site,
-        on_delete=models.CASCADE,
-        help_text="Site this configuration applies to"
+        Site, on_delete=models.CASCADE, help_text="Site this configuration applies to"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,6 +1,10 @@
 from typing import Optional, Sequence
 from django.core.mail.backends.base import BaseEmailBackend
-from django.core.mail.message import EmailMessage, EmailMultiAlternatives, sanitize_address
+from django.core.mail.message import (
+    EmailMessage,
+    EmailMultiAlternatives,
+    sanitize_address,
+)
 from django.contrib.sites.models import Site
 
 from .services import ForwardEmailService
@@ -114,9 +118,12 @@ class ForwardEmailBackend(BaseEmailBackend):
         text_content = email_message.body
 
         # Check if this is a multipart message with HTML
-        if isinstance(email_message, EmailMultiAlternatives) and email_message.alternatives:
+        if (
+            isinstance(email_message, EmailMultiAlternatives)
+            and email_message.alternatives
+        ):
             for content, content_type in email_message.alternatives:
-                if content_type == 'text/html':
+                if content_type == "text/html":
                     html_content = str(content)
                     break
 

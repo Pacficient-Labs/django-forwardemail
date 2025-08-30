@@ -9,35 +9,66 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('sites', '0002_alter_domain_unique'),
+        ("sites", "0002_alter_domain_unique"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='EmailConfiguration',
+            name="EmailConfiguration",
             fields=[
-                ('id', models.BigAutoField(auto_created=True,
-                 primary_key=True, serialize=False, verbose_name='ID')),
-                ('api_key', models.CharField(
-                    help_text='ForwardEmail API key for authentication', max_length=255)),
-                ('from_email', models.EmailField(
-                    help_text='Default email address to send from', max_length=254)),
-                ('from_name', models.CharField(
-                    help_text='The name that will appear in the From field of emails', max_length=255)),
-                ('reply_to', models.EmailField(
-                    help_text='Default reply-to email address', max_length=254)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('site', models.ForeignKey(help_text='Site this configuration applies to',
-                 on_delete=django.db.models.deletion.CASCADE, to='sites.site')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "api_key",
+                    models.CharField(
+                        help_text="ForwardEmail API key for authentication",
+                        max_length=255,
+                    ),
+                ),
+                (
+                    "from_email",
+                    models.EmailField(
+                        help_text="Default email address to send from", max_length=254
+                    ),
+                ),
+                (
+                    "from_name",
+                    models.CharField(
+                        help_text="The name that will appear in the From field of emails",
+                        max_length=255,
+                    ),
+                ),
+                (
+                    "reply_to",
+                    models.EmailField(
+                        help_text="Default reply-to email address", max_length=254
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "site",
+                    models.ForeignKey(
+                        help_text="Site this configuration applies to",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="sites.site",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Email Configuration',
-                'verbose_name_plural': 'Email Configurations',
+                "verbose_name": "Email Configuration",
+                "verbose_name_plural": "Email Configurations",
             },
         ),
         migrations.AlterUniqueTogether(
-            name='emailconfiguration',
-            unique_together={('site',)},
+            name="emailconfiguration",
+            unique_together={("site",)},
         ),
     ]

@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Django integration for ForwardEmail API with multi-site support"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "MIT"
+license = {text = "MIT"}
 authors = [
     {name = "PacNPal", email = "support@pacficient.com"},
     {name = "Pacficient Labs", email = "labs@pacficient.com"},
@@ -57,10 +57,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/thrillwiki/django-forwardemail"
+Homepage = "https://github.com/Pacficient-Labs/django-forwardemail"
 Documentation = "https://django-forwardemail.readthedocs.io/"
-Repository = "https://github.com/thrillwiki/django-forwardemail.git"
-"Bug Tracker" = "https://github.com/thrillwiki/django-forwardemail/issues"
+Repository = "https://github.com/Pacficient-Labs/django-forwardemail.git"
+"Bug Tracker" = "https://github.com/Pacficient-Labs/django-forwardemail/issues"
 
 [tool.setuptools.packages.find]
 include = ["django_forwardemail*"]
