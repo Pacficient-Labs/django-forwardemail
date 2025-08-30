@@ -1,0 +1,102 @@
+name: ❓ Question / Help
+description: Ask a question or get help with django-forwardemail
+title: "[QUESTION] "
+labels: ["question", "help-wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out! Please provide as much detail as possible so we can help you effectively.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please check the following before submitting
+      options:
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I have read the README and documentation
+          required: true
+        - label: I have checked the troubleshooting guide
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know or what help do you need?
+      placeholder: I'm trying to... / How do I... / Is it possible to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide context about what you're trying to achieve
+      placeholder: |
+        I'm building a Django application that needs to...
+        My use case is...
+        I want to achieve...
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What I've Tried
+      description: What have you already tried? Include any code or configuration attempts
+      render: python
+      placeholder: |
+        # settings.py
+        INSTALLED_APPS = [
+            'django_forwardemail',
+        ]
+        
+        # I tried...
+        from django_forwardemail.services import EmailService
+        
+        # But I'm getting confused about...
+
+  - type: textarea
+    id: expected_outcome
+    attributes:
+      label: Expected Outcome
+      description: What are you hoping to achieve or what result do you expect?
+      placeholder: I expect to be able to...
+
+  - type: dropdown
+    id: django_version
+    attributes:
+      label: Django Version
+      description: Which version of Django are you using?
+      options:
+        - "5.2.x"
+        - "5.1.x"
+        - "5.0.x"
+        - "4.2.x (LTS)"
+        - "Other (please specify below)"
+
+  - type: input
+    id: package_version
+    attributes:
+      label: django-forwardemail Version
+      description: Which version of django-forwardemail are you using?
+      placeholder: "1.0.0"
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is this question for you?
+      options:
+        - "Low - Just curious"
+        - "Medium - Would help my project"
+        - "High - Blocking my development"
+        - "Critical - Production issue"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Any other details that might be helpful
+      placeholder: Any additional context, error messages, or information...
