@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import requests
 from django.conf import settings
@@ -62,6 +62,7 @@ class ForwardEmailService:
         # Import Django models here to avoid import-time configuration issues
         from django.contrib.sites.models import Site
         from django.contrib.sites.shortcuts import get_current_site
+
         from .models import EmailConfiguration
 
         # Get the site configuration
@@ -177,7 +178,7 @@ class ForwardEmailService:
         Extract clean email address from a string that may contain a name.
 
         Args:
-            email_string: Email string like "Name <email@domain.com>" or 
+            email_string: Email string like "Name <email@domain.com>" or
                          "email@domain.com"
 
         Returns:

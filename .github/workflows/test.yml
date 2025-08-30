@@ -11,37 +11,35 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11", "3.12", "3.13"]
+        python-version: [3.9, "3.10", "3.11", "3.12", "3.13"]
         django-version: [3.2, 4.0, 4.1, 4.2, 5.0, 5.1]
         exclude:
           # Django 5.0+ requires Python 3.10+
-          - python-version: 3.8
-            django-version: 5.0
           - python-version: 3.9
             django-version: 5.0
-          - python-version: 3.8
-            django-version: 5.1
           - python-version: 3.9
             django-version: 5.1
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install Django~=${{ matrix.django-version }}.0
-        pip install -e ".[dev]"
+        uv sync --extra dev
+        uv add "Django~=${{ matrix.django-version }}.0"
 
     - name: Run Django checks
       run: |
         # Test Django integration
-        python -c "
+        uv run python -c "
         import os
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
         import django
@@ -53,7 +51,7 @@ jobs:
     - name: Run migrations
       run: |
         # Test migrations work
-        python -c "
+        uv run python -c "
         import os
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
         import django
@@ -65,7 +63,7 @@ jobs:
     - name: Test Django admin integration
       run: |
         # Test admin integration
-        python -c "
+        uv run python -c "
         import os
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
         import django
@@ -78,7 +76,7 @@ jobs:
 
     - name: Test package imports
       run: |
-        python -c "
+        uv run python -c "
         # Configure Django settings before importing models
         import os
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
@@ -96,7 +94,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --cov=django_forwardemail --cov-report=xml --verbose
+        uv run pytest --cov=django_forwardemail --cov-report=xml --verbose
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -109,21 +107,96 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: "3.11"
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
 
     - name: Install dependencies
+      run: uv sync --extra dev
+
+    - name: Run Ruff linting
+      id: ruff-check
       run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        echo "Running Ruff linting..."
+        if uv run ruff check django_forwardemail/; then
+          echo "✅ No Ruff linting issues found"
+          echo "ruff_passed=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Ruff linting issues found"
+          echo "ruff_passed=false" >> $GITHUB_OUTPUT
+          echo ""
+          echo "To fix linting issues, run:"
+          echo "  uv run ruff check --fix django_forwardemail/"
+        fi
+      continue-on-error: true
 
-    - name: Run black
-      run: black --check django_forwardemail/
+    - name: Run Ruff formatting check
+      id: ruff-format-check
+      run: |
+        echo "Checking Ruff formatting..."
+        if uv run ruff format --check django_forwardemail/; then
+          echo "✅ Code is properly formatted"
+          echo "formatted=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Code formatting issues found"
+          echo "formatted=false" >> $GITHUB_OUTPUT
+          echo ""
+          echo "To fix formatting issues, run:"
+          echo "  uv run ruff format django_forwardemail/"
+        fi
+      continue-on-error: true
 
-    - name: Run flake8
-      run: flake8 django_forwardemail/ --max-line-length=88 --ignore=C901,W503
+    - name: Auto-fix issues (on push to main/develop)
+      if: (steps.ruff-check.outputs.ruff_passed == 'false' || steps.ruff-format-check.outputs.formatted == 'false') && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      run: |
+        echo "Auto-fixing Ruff issues..."
+        uv run ruff check --fix django_forwardemail/
+        uv run ruff format django_forwardemail/
+        if [[ -n $(git status --porcelain) ]]; then
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add django_forwardemail/
+          git commit -m "style: auto-fix Ruff linting and formatting [skip ci]"
+          git push
+          echo "✅ Issues fixed and committed"
+        fi
+
+    - name: Fail on issues (PRs only)
+      if: (steps.ruff-check.outputs.ruff_passed == 'false' || steps.ruff-format-check.outputs.formatted == 'false') && github.event_name == 'pull_request'
+      run: |
+        echo "::error::Code quality issues found in PR. Please run 'uv run ruff check --fix django_forwardemail/' and 'uv run ruff format django_forwardemail/' to fix."
+        exit 1
+
+    - name: Run Black (fallback formatting check)
+      run: |
+        echo "Running Black as fallback formatting check..."
+        if uv run black --check --diff django_forwardemail/; then
+          echo "✅ Black formatting check passed"
+        else
+          echo "⚠️ Black formatting differs from Ruff (this is informational only)"
+        fi
+      continue-on-error: true
+
+    - name: Run flake8 (additional linting)
+      run: |
+        echo "Running flake8 for additional checks..."
+        if uv run flake8 django_forwardemail/ --max-line-length=88 --ignore=C901,W503; then
+          echo "✅ No additional flake8 issues found"
+        else
+          echo "⚠️ Additional flake8 issues found (informational only)"
+        fi
+      continue-on-error: true
 
     - name: Run mypy
-      run: mypy django_forwardemail/
+      run: |
+        echo "Running mypy..."
+        if uv run mypy django_forwardemail/; then
+          echo "✅ No mypy issues found"
+        else
+          echo "❌ mypy issues found"
+          exit 1
+        fi

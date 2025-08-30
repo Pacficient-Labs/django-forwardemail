@@ -11,6 +11,11 @@ A Django package for integrating with the [ForwardEmail](https://forwardemail.ne
 - **Type Safety**: Full type hints and mypy compatibility
 - **Comprehensive Logging**: Debug-friendly logging for troubleshooting
 
+## Requirements
+
+- Python 3.9+
+- Django 3.2+
+
 ## Installation
 
 ```bash

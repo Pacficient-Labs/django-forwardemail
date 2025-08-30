@@ -1,4 +1,6 @@
-from typing import Optional, Sequence, TYPE_CHECKING
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Optional
+
 from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail.message import (
     EmailMessage,
