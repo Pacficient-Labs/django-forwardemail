@@ -27,8 +27,12 @@ build/
 dist/
 *.egg-info/
 
-# Documentation (generated locally, not needed in repo)
-docs/
+# Documentation build artifacts (generated locally, not needed in repo)
+docs/_build/
+docs/_static/
+docs/PYPI_DISTRIBUTION.md
+docs/MIGRATION_CONSIDERATIONS.md
+docs/AUTOMATED_PUBLISHING.md
 PACKAGE_SUMMARY.md
 
 # Testing

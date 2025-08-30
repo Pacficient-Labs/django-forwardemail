@@ -1,0 +1,5 @@
+# Documentation requirements for Read the Docs
+sphinx>=7.0.0
+sphinx-rtd-theme>=2.0.0
+django>=4.2.0
+requests>=2.25.0
