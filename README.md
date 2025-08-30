@@ -14,7 +14,7 @@ A Django package for integrating with the [ForwardEmail](https://forwardemail.ne
 ## Requirements
 
 - Python 3.10+
-- Django 4.1+
+- Django 4.2+
 
 ## Installation
 
