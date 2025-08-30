@@ -1,0 +1,74 @@
+# django-forwardemail
+
+Django integration for ForwardEmail API with multi-site support.
+
+## Overview
+
+django-forwardemail is a Django package that provides seamless integration with the ForwardEmail service. It offers multi-site support, enhanced site detection, backward compatibility, professional logging, and complete ForwardEmail API integration.
+
+## Key Features
+
+- **Multi-Site Support**: Full Django Sites framework integration
+- **Enhanced Site Detection**: Automatic fallback mechanisms for missing request/site parameters
+- **Backward Compatibility**: Maintained EmailService alias for seamless integration
+- **Professional Logging**: Comprehensive logging instead of debug prints
+- **ForwardEmail API**: Complete integration with ForwardEmail service
+
+## Quick Start
+
+Install the package:
+```bash
+pip install django-forwardemail
+```
+
+Add to your Django settings:
+```python
+INSTALLED_APPS = [
+    # ... other apps
+    'django_forwardemail',
+]
+```
+
+Use the service:
+```python
+from django_forwardemail.services import EmailService
+
+EmailService.send_email(
+    to='user@example.com',
+    subject='Welcome!',
+    text='Welcome to our service!',
+    html='<h1>Welcome to our service!</h1>',
+)
+```
+
+## Requirements
+
+- Django 4.2+
+- Python 3.8+
+- ForwardEmail account and API key
+
+## Links
+
+- **PyPI**: https://pypi.org/project/django-forwardemail/
+- **GitHub**: https://github.com/Pacficient-Labs/django-forwardemail
+- **Documentation**: https://django-forwardemail.readthedocs.io/
+- **Issues**: https://github.com/Pacficient-Labs/django-forwardemail/issues
+
+## Project Structure
+
+```
+django-forwardemail/
+├── django_forwardemail/          # Main package
+│   ├── __init__.py              # Package initialization
+│   ├── apps.py                  # Django app configuration
+│   ├── models.py                # EmailConfiguration model
+│   ├── services.py              # EmailService implementation
+│   ├── backends.py              # Django email backend
+│   ├── admin.py                 # Django admin configuration
+│   └── migrations/              # Database migrations
+├── tests/                       # Test suite
+├── docs/                        # Sphinx documentation
+├── .github/                     # GitHub workflows and templates
+├── pyproject.toml              # Package configuration
+├── README.md                   # Project documentation
+└── LICENSE                     # MIT license

@@ -1,0 +1,439 @@
+# django-forwardemail - Complete Technical Documentation
+
+Django integration for ForwardEmail API with multi-site support.
+
+## Overview
+
+django-forwardemail is a Django package that provides seamless integration with the ForwardEmail service. It offers multi-site support, enhanced site detection, backward compatibility, professional logging, and complete ForwardEmail API integration.
+
+## Key Features
+
+- **Multi-Site Support**: Full Django Sites framework integration
+- **Enhanced Site Detection**: Automatic fallback mechanisms for missing request/site parameters
+- **Backward Compatibility**: Maintained EmailService alias for seamless integration
+- **Professional Logging**: Comprehensive logging instead of debug prints
+- **ForwardEmail API**: Complete integration with ForwardEmail service
+
+## Installation
+
+```bash
+pip install django-forwardemail
+```
+
+## Configuration
+
+Add to your Django settings:
+
+```python
+INSTALLED_APPS = [
+    # ... other apps
+    'django_forwardemail',
+]
+
+# Optional: Configure default email backend
+EMAIL_BACKEND = 'django_forwardemail.backends.ForwardEmailBackend'
+```
+
+## Usage
+
+### Basic Usage
+
+```python
+from django_forwardemail.services import EmailService
+
+# Send a simple email
+EmailService.send_email(
+    to='user@example.com',
+    subject='Welcome!',
+    text='Welcome to our service!',
+    html='<h1>Welcome to our service!</h1>',
+)
+
+# Send with additional parameters
+EmailService.send_email(
+    to='user@example.com',
+    subject='Welcome!',
+    text='Welcome to our service!',
+    html='<h1>Welcome to our service!</h1>',
+    from_email='noreply@example.com',
+    reply_to='support@example.com',
+)
+```
+
+### Multi-Site Usage
+
+```python
+from django.contrib.sites.models import Site
+from django_forwardemail.services import EmailService
+
+# Send email for specific site
+site = Site.objects.get(domain='example.com')
+EmailService.send_email(
+    to='user@example.com',
+    subject='Welcome!',
+    text='Welcome to our service!',
+    site=site,
+)
+```
+
+## Technical Architecture
+
+### Core Components
+
+#### EmailService Class
+The main service class that handles email sending operations.
+
+**Location**: `django_forwardemail/services.py`
+
+**Key Methods**:
+- `send_email()`: Main method for sending emails
+- `_get_site_config()`: Retrieves site-specific configuration
+- `_send_forwardemail_request()`: Handles ForwardEmail API communication
+
+#### EmailConfiguration Model
+Django model for storing site-specific email configurations.
+
+**Location**: `django_forwardemail/models.py`
+
+**Fields**:
+- `site`: ForeignKey to Django Site
+- `api_key`: ForwardEmail API key
+- `from_email`: Default from email address
+- `from_name`: Default from name
+- `reply_to`: Default reply-to address
+
+#### ForwardEmailBackend
+Django email backend implementation for seamless integration.
+
+**Location**: `django_forwardemail/backends.py`
+
+**Purpose**: Allows using django-forwardemail as Django's default email backend.
+
+### API Integration
+
+The package integrates with ForwardEmail's REST API using the following endpoint:
+- **URL**: `https://api.forwardemail.net/v1/emails`
+- **Method**: POST
+- **Authentication**: Basic Auth with API key
+- **Content-Type**: application/json
+
+### Error Handling
+
+The service implements comprehensive error handling:
+- API connection errors
+- Authentication failures
+- Invalid email addresses
+- Rate limiting
+- Server errors
+
+All errors are logged using Python's logging module with appropriate log levels.
+
+### Site Detection Logic
+
+The package uses intelligent site detection:
+1. Check if `site` parameter is provided
+2. Check if `request` parameter contains site information
+3. Fall back to current site from Django Sites framework
+4. Use default site if no specific site is found
+
+### Configuration Management
+
+Email configurations are managed per-site:
+- Each Django Site can have its own ForwardEmail configuration
+- Configurations include API keys, default addresses, and settings
+- Fallback mechanisms ensure emails can be sent even without site-specific config
+
+## Database Schema
+
+### EmailConfiguration Model
+
+```sql
+CREATE TABLE django_forwardemail_emailconfiguration (
+    id SERIAL PRIMARY KEY,
+    site_id INTEGER NOT NULL REFERENCES django_site(id),
+    api_key VARCHAR(255) NOT NULL,
+    from_email VARCHAR(254),
+    from_name VARCHAR(255),
+    reply_to VARCHAR(254),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE UNIQUE INDEX django_forwardemail_emailconfiguration_site_id_uniq 
+ON django_forwardemail_emailconfiguration(site_id);
+```
+
+## Testing
+
+The package includes comprehensive tests:
+
+### Test Structure
+```
+tests/
+├── __init__.py
+├── settings.py          # Test Django settings
+├── urls.py             # Test URL configuration
+└── test_models.py      # Model tests
+```
+
+### Running Tests
+```bash
+cd django-forwardemail
+python -m pytest tests/
+```
+
+### Test Coverage
+- Model creation and validation
+- Email service functionality
+- Site detection logic
+- Error handling scenarios
+- API integration mocking
+
+## Development Setup
+
+### Prerequisites
+- Python 3.8+
+- Django 4.2+
+- uv (recommended) or pip
+
+### Local Development
+```bash
+# Clone the repository
+git clone https://github.com/Pacficient-Labs/django-forwardemail.git
+cd django-forwardemail
+
+# Install dependencies
+uv sync
+
+# Run tests
+uv run python -m pytest tests/
+
+# Build documentation
+cd docs
+uv run make html
+```
+
+## Deployment Considerations
+
+### Environment Variables
+```bash
+# ForwardEmail API configuration
+FORWARDEMAIL_API_KEY=your_api_key_here
+FORWARDEMAIL_FROM_EMAIL=noreply@yourdomain.com
+FORWARDEMAIL_FROM_NAME="Your App Name"
+```
+
+### Production Settings
+```python
+# settings.py
+EMAIL_BACKEND = 'django_forwardemail.backends.ForwardEmailBackend'
+
+# Optional: Configure logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'django_forwardemail.log',
+        },
+    },
+    'loggers': {
+        'django_forwardemail': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+```
+
+## Security Considerations
+
+### API Key Management
+- Store API keys securely using environment variables
+- Use different API keys for different environments
+- Rotate API keys regularly
+- Never commit API keys to version control
+
+### Email Validation
+- The package validates email addresses before sending
+- Implements rate limiting awareness
+- Logs security-relevant events
+
+### Data Privacy
+- Email content is transmitted securely via HTTPS
+- No email content is stored locally
+- Respects Django's security settings
+
+## Performance Optimization
+
+### Caching
+- Site configurations are cached to reduce database queries
+- API responses include caching headers
+- Connection pooling for HTTP requests
+
+### Async Support
+The package is designed to work with Django's async views:
+```python
+from asgiref.sync import sync_to_async
+from django_forwardemail.services import EmailService
+
+async def send_welcome_email(user_email):
+    await sync_to_async(EmailService.send_email)(
+        to=user_email,
+        subject='Welcome!',
+        text='Welcome to our service!',
+    )
+```
+
+## Monitoring and Logging
+
+### Log Levels
+- `DEBUG`: Detailed API request/response information
+- `INFO`: Successful email sends and configuration changes
+- `WARNING`: Recoverable errors and fallback usage
+- `ERROR`: Failed email sends and configuration errors
+- `CRITICAL`: System-level failures
+
+### Metrics
+The package logs metrics suitable for monitoring:
+- Email send success/failure rates
+- API response times
+- Configuration usage patterns
+- Error frequencies
+
+## Migration from Other Email Services
+
+### From Django's send_mail
+```python
+# Before
+from django.core.mail import send_mail
+send_mail(
+    'Subject',
+    'Message',
+    'from@example.com',
+    ['to@example.com'],
+)
+
+# After
+from django_forwardemail.services import EmailService
+EmailService.send_email(
+    to='to@example.com',
+    subject='Subject',
+    text='Message',
+    from_email='from@example.com',
+)
+```
+
+### From Other Email Services
+The package provides compatibility methods and migration utilities for common email service patterns.
+
+## API Reference
+
+### EmailService.send_email()
+
+**Parameters**:
+- `to` (str, required): Recipient email address
+- `subject` (str, required): Email subject
+- `text` (str, required): Plain text email content
+- `from_email` (str, optional): Sender email address
+- `html` (str, optional): HTML email content
+- `reply_to` (str, optional): Reply-to email address
+- `request` (HttpRequest, optional): Django request object for site detection
+- `site` (Site, optional): Django Site object
+
+**Returns**: None
+
+**Raises**:
+- `EmailConfigurationError`: When configuration is invalid
+- `ForwardEmailAPIError`: When API request fails
+- `ValidationError`: When email addresses are invalid
+
+## Contributing
+
+### Development Workflow
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with tests
+4. Run the test suite
+5. Submit a pull request
+
+### Code Standards
+- Follow PEP 8 style guidelines
+- Include type hints
+- Write comprehensive tests
+- Update documentation
+- Use conventional commit messages
+
+## Changelog
+
+### Version 1.0.0
+- Initial release
+- Multi-site support
+- ForwardEmail API integration
+- Django email backend
+- Comprehensive test suite
+- Professional documentation
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+- **Documentation**: https://django-forwardemail.readthedocs.io/
+- **Issues**: https://github.com/Pacficient-Labs/django-forwardemail/issues
+- **PyPI**: https://pypi.org/project/django-forwardemail/
+- **GitHub**: https://github.com/Pacficient-Labs/django-forwardemail
+
+## Requirements
+
+- Django 4.2+
+- Python 3.8+
+- ForwardEmail account and API key
+- requests library
+- python-dateutil
+
+## Project Structure
+
+```
+django-forwardemail/
+├── django_forwardemail/          # Main package
+│   ├── __init__.py              # Package initialization and version
+│   ├── apps.py                  # Django app configuration
+│   ├── models.py                # EmailConfiguration model
+│   ├── services.py              # EmailService implementation
+│   ├── backends.py              # Django email backend
+│   ├── admin.py                 # Django admin configuration
+│   └── migrations/              # Database migrations
+│       ├── __init__.py
+│       └── 0001_initial.py      # Initial migration
+├── tests/                       # Test suite
+│   ├── __init__.py
+│   ├── settings.py              # Test Django settings
+│   ├── urls.py                  # Test URL configuration
+│   └── test_models.py           # Model tests
+├── docs/                        # Sphinx documentation
+│   ├── conf.py                  # Sphinx configuration
+│   ├── index.rst                # Documentation homepage
+│   └── requirements.txt         # Documentation dependencies
+├── .github/                     # GitHub workflows and templates
+│   ├── workflows/
+│   │   ├── test.yml            # CI testing workflow
+│   │   └── publish.yml         # PyPI publishing workflow
+│   └── ISSUE_TEMPLATE/         # Issue templates
+│       ├── bug_report.yml
+│       ├── feature_request.yml
+│       ├── question.yml
+│       └── config.yml
+├── pyproject.toml              # Package configuration
+├── README.md                   # Project documentation
+├── LICENSE                     # MIT license
+├── CONTRIBUTING.md             # Contributing guidelines
+├── MANIFEST.in                 # Package manifest
+├── .gitignore                  # Git ignore rules
+├── .readthedocs.yaml          # Read the Docs configuration
+├── llms.txt                   # AI assistant context (basic)
+└── llms-full.txt              # AI assistant context (comprehensive)
