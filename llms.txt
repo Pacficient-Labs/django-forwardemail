@@ -10,7 +10,8 @@ django-forwardemail is a Django package that provides seamless integration with 
 
 - **Multi-Site Support**: Full Django Sites framework integration
 - **Enhanced Site Detection**: Automatic fallback mechanisms for missing request/site parameters
-- **Backward Compatibility**: Maintained EmailService alias for seamless integration
+- **Django Email Backend**: Drop-in backend for Django's standard `send_mail()`
+- **Backward Compatibility**: Maintained `EmailService` alias for seamless integration
 - **Professional Logging**: Comprehensive logging instead of debug prints
 - **ForwardEmail API**: Complete integration with ForwardEmail service
 
@@ -25,15 +26,38 @@ Add to your Django settings:
 ```python
 INSTALLED_APPS = [
     # ... other apps
+    'django.contrib.sites',  # Required for multi-site support
     'django_forwardemail',
 ]
+
+# Optional: use ForwardEmail as the default Django email backend
+EMAIL_BACKEND = 'django_forwardemail.backends.ForwardEmailBackend'
 ```
 
-Use the service:
-```python
-from django_forwardemail.services import EmailService
+Run migrations:
+```bash
+python manage.py migrate
+```
 
-EmailService.send_email(
+Create an `EmailConfiguration` for your site (via the Django admin or the ORM):
+```python
+from django.contrib.sites.models import Site
+from django_forwardemail.models import EmailConfiguration
+
+EmailConfiguration.objects.create(
+    site=Site.objects.get_current(),
+    api_key='your-forwardemail-api-key',
+    from_email='noreply@example.com',
+    from_name='Example Site',
+    reply_to='support@example.com',
+)
+```
+
+Send an email with the service class:
+```python
+from django_forwardemail.services import ForwardEmailService
+
+ForwardEmailService.send_email(
     to='user@example.com',
     subject='Welcome!',
     text='Welcome to our service!',
@@ -43,8 +67,9 @@ EmailService.send_email(
 
 ## Requirements
 
-- Django 4.2+
-- Python 3.8+
+- Django 4.2+ (tested through Django 6.0)
+- Python 3.10+
+- requests 2.25.0+
 - ForwardEmail account and API key
 
 ## Links
@@ -62,13 +87,15 @@ django-forwardemail/
 │   ├── __init__.py              # Package initialization
 │   ├── apps.py                  # Django app configuration
 │   ├── models.py                # EmailConfiguration model
-│   ├── services.py              # EmailService implementation
+│   ├── services.py              # ForwardEmailService implementation
 │   ├── backends.py              # Django email backend
 │   ├── admin.py                 # Django admin configuration
 │   └── migrations/              # Database migrations
 ├── tests/                       # Test suite
 ├── docs/                        # Sphinx documentation
 ├── .github/                     # GitHub workflows and templates
+├── context7.json               # Context7 indexing configuration
 ├── pyproject.toml              # Package configuration
 ├── README.md                   # Project documentation
 └── LICENSE                     # MIT license
+```

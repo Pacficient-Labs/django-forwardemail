@@ -4,13 +4,14 @@ Django integration for ForwardEmail API with multi-site support.
 
 ## Overview
 
-django-forwardemail is a Django package that provides seamless integration with the ForwardEmail service. It offers multi-site support, enhanced site detection, backward compatibility, professional logging, and complete ForwardEmail API integration.
+django-forwardemail is a Django package that provides seamless integration with the ForwardEmail service. It offers multi-site support, enhanced site detection, a Django email backend, backward compatibility, professional logging, and complete ForwardEmail API integration.
 
 ## Key Features
 
 - **Multi-Site Support**: Full Django Sites framework integration
 - **Enhanced Site Detection**: Automatic fallback mechanisms for missing request/site parameters
-- **Backward Compatibility**: Maintained EmailService alias for seamless integration
+- **Django Email Backend**: Drop-in backend for Django's standard `send_mail()` and `EmailMultiAlternatives`
+- **Backward Compatibility**: Maintained `EmailService` alias for seamless integration
 - **Professional Logging**: Comprehensive logging instead of debug prints
 - **ForwardEmail API**: Complete integration with ForwardEmail service
 
@@ -22,27 +23,62 @@ pip install django-forwardemail
 
 ## Configuration
 
-Add to your Django settings:
+### 1. Add the apps to INSTALLED_APPS
 
 ```python
 INSTALLED_APPS = [
     # ... other apps
+    'django.contrib.sites',  # Required for multi-site support
     'django_forwardemail',
 ]
 
-# Optional: Configure default email backend
+# Optional: use ForwardEmail as the default Django email backend
 EMAIL_BACKEND = 'django_forwardemail.backends.ForwardEmailBackend'
+
+# Optional: override the ForwardEmail API base URL
+# (defaults to https://api.forwardemail.net)
+FORWARD_EMAIL_BASE_URL = 'https://api.forwardemail.net'
 ```
+
+### 2. Run migrations
+
+```bash
+python manage.py migrate
+```
+
+This creates the `EmailConfiguration` table used to store per-site settings.
+
+### 3. Create an EmailConfiguration
+
+Configuration is stored in the database, one `EmailConfiguration` per Django
+`Site`. Create it through the Django admin (Django ForwardEmail → Email
+Configurations) or programmatically:
+
+```python
+from django.contrib.sites.models import Site
+from django_forwardemail.models import EmailConfiguration
+
+EmailConfiguration.objects.create(
+    site=Site.objects.get_current(),
+    api_key='your-forwardemail-api-key',
+    from_email='noreply@example.com',
+    from_name='Example Site',
+    reply_to='support@example.com',
+)
+```
+
+> Note: there are no `FORWARDEMAIL_*` environment variables or settings. The
+> only package-specific setting is `FORWARD_EMAIL_BASE_URL`.
 
 ## Usage
 
-### Basic Usage
+### Using the Service Class
 
 ```python
-from django_forwardemail.services import EmailService
+from django_forwardemail.services import ForwardEmailService
 
 # Send a simple email
-EmailService.send_email(
+ForwardEmailService.send_email(
     to='user@example.com',
     subject='Welcome!',
     text='Welcome to our service!',
@@ -50,7 +86,7 @@ EmailService.send_email(
 )
 
 # Send with additional parameters
-EmailService.send_email(
+ForwardEmailService.send_email(
     to='user@example.com',
     subject='Welcome!',
     text='Welcome to our service!',
@@ -60,15 +96,17 @@ EmailService.send_email(
 )
 ```
 
+`EmailService` is a backward-compatible alias for `ForwardEmailService`.
+
 ### Multi-Site Usage
 
 ```python
 from django.contrib.sites.models import Site
-from django_forwardemail.services import EmailService
+from django_forwardemail.services import ForwardEmailService
 
-# Send email for specific site
+# Send email for a specific site
 site = Site.objects.get(domain='example.com')
-EmailService.send_email(
+ForwardEmailService.send_email(
     to='user@example.com',
     subject='Welcome!',
     text='Welcome to our service!',
@@ -76,72 +114,115 @@ EmailService.send_email(
 )
 ```
 
+### Using the Django Email Backend
+
+With `EMAIL_BACKEND` set to `django_forwardemail.backends.ForwardEmailBackend`,
+Django's standard email helpers route through ForwardEmail:
+
+```python
+from django.core.mail import send_mail, EmailMultiAlternatives
+
+# Plain text
+send_mail(
+    'Subject here',
+    'Here is the message.',
+    'from@example.com',
+    ['to@example.com'],
+    fail_silently=False,
+)
+
+# HTML with text fallback
+msg = EmailMultiAlternatives(
+    'Subject here',
+    'Plain text version of the message.',
+    'from@example.com',
+    ['to@example.com'],
+)
+msg.attach_alternative('<h1>HTML version</h1>', 'text/html')
+msg.send()
+```
+
+The ForwardEmail API sends to one recipient per request, so the backend sends
+to the first recipient of each message.
+
 ## Technical Architecture
 
 ### Core Components
 
-#### EmailService Class
+#### ForwardEmailService Class
+
 The main service class that handles email sending operations.
 
 **Location**: `django_forwardemail/services.py`
 
-**Key Methods**:
-- `send_email()`: Main method for sending emails
-- `_get_site_config()`: Retrieves site-specific configuration
-- `_send_forwardemail_request()`: Handles ForwardEmail API communication
+**Public surface**:
+- `send_email(*, to, subject, text, from_email=None, html=None, reply_to=None, request=None, site=None, base_url=None)`:
+  keyword-only classmethod, the main method for sending email.
+- `extract_email(email_string)`: staticmethod that returns the bare address from
+  a `"Name <email@domain.com>"` string.
+- `DEFAULT_BASE_URL`: class attribute, `"https://api.forwardemail.net"`.
 
 #### EmailConfiguration Model
+
 Django model for storing site-specific email configurations.
 
 **Location**: `django_forwardemail/models.py`
 
-**Fields**:
-- `site`: ForeignKey to Django Site
-- `api_key`: ForwardEmail API key
-- `from_email`: Default from email address
-- `from_name`: Default from name
-- `reply_to`: Default reply-to address
+**Fields** (all required):
+- `site`: ForeignKey to Django `Site` (unique — one configuration per site)
+- `api_key`: ForwardEmail API key (`CharField`, max length 255)
+- `from_email`: Default from email address (`EmailField`)
+- `from_name`: Default from name (`CharField`, max length 255)
+- `reply_to`: Default reply-to address (`EmailField`)
+- `created_at`: `DateTimeField`, auto-set on creation
+- `updated_at`: `DateTimeField`, auto-set on save
 
 #### ForwardEmailBackend
+
 Django email backend implementation for seamless integration.
 
 **Location**: `django_forwardemail/backends.py`
 
 **Purpose**: Allows using django-forwardemail as Django's default email backend.
+Supports `EmailMessage` and `EmailMultiAlternatives` (HTML + text), extracts
+reply-to from the message, and accepts an optional `site` via the connection or
+backend kwargs.
 
 ### API Integration
 
-The package integrates with ForwardEmail's REST API using the following endpoint:
-- **URL**: `https://api.forwardemail.net/v1/emails`
+The package integrates with ForwardEmail's REST API:
+- **URL**: `{base_url}/v1/emails` (default base URL `https://api.forwardemail.net`)
 - **Method**: POST
-- **Authentication**: Basic Auth with API key
+- **Authentication**: HTTP Basic Auth — the API key as the username, empty password
 - **Content-Type**: application/json
+- **Timeout**: 60 seconds
 
 ### Error Handling
 
-The service implements comprehensive error handling:
-- API connection errors
-- Authentication failures
-- Invalid email addresses
-- Rate limiting
-- Server errors
-
-All errors are logged using Python's logging module with appropriate log levels.
+- A non-200 response or a `requests.RequestException` raises a generic
+  `Exception` with the status code and response body.
+- A missing site or a missing `EmailConfiguration` for the resolved site raises
+  `django.core.exceptions.ImproperlyConfigured`.
+- All errors are logged via Python's `logging` module under the
+  `django_forwardemail` logger.
 
 ### Site Detection Logic
 
-The package uses intelligent site detection:
-1. Check if `site` parameter is provided
-2. Check if `request` parameter contains site information
-3. Fall back to current site from Django Sites framework
-4. Use default site if no specific site is found
+`send_email()` resolves the site in this order:
+1. Use the explicit `site` argument if provided.
+2. Otherwise, if `request` is provided, use `get_current_site(request)` (must
+   resolve to a real `Site` object).
+3. Otherwise, use `Site.objects.get_current()`.
+4. Otherwise, fall back to `Site.objects.first()`.
+5. If no site can be determined, raise `ImproperlyConfigured`.
 
 ### Configuration Management
 
 Email configurations are managed per-site:
-- Each Django Site can have its own ForwardEmail configuration
-- Configurations include API keys, default addresses, and settings
-- Fallback mechanisms ensure emails can be sent even without site-specific config
+- Each Django `Site` can have its own ForwardEmail `EmailConfiguration`.
+- Configurations include the API key and default from/reply-to addresses.
+- If `from_email` is passed without a display name, the configured `from_name`
+  is applied; if `reply_to` is omitted, the configured `reply_to` is used.
 
 ## Database Schema
 
@@ -149,31 +230,32 @@ Email configurations are managed per-site:
 
 ```sql
 CREATE TABLE django_forwardemail_emailconfiguration (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     site_id INTEGER NOT NULL REFERENCES django_site(id),
     api_key VARCHAR(255) NOT NULL,
-    from_email VARCHAR(254),
-    from_name VARCHAR(255),
-    reply_to VARCHAR(254),
+    from_email VARCHAR(254) NOT NULL,
+    from_name VARCHAR(255) NOT NULL,
+    reply_to VARCHAR(254) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE UNIQUE INDEX django_forwardemail_emailconfiguration_site_id_uniq 
+CREATE UNIQUE INDEX django_forwardemail_emailconfiguration_site_id_uniq
 ON django_forwardemail_emailconfiguration(site_id);
 ```
 
 ## Testing
 
-The package includes comprehensive tests:
+The package includes a pytest-based test suite.
 
 ### Test Structure
 ```
 tests/
 ├── __init__.py
 ├── settings.py          # Test Django settings
-├── urls.py             # Test URL configuration
-└── test_models.py      # Model tests
+├── urls.py              # Test URL configuration
+├── test_models.py       # EmailConfiguration model tests
+└── test_backend.py      # ForwardEmailBackend tests
 ```
 
 ### Running Tests
@@ -183,16 +265,16 @@ python -m pytest tests/
 ```
 
 ### Test Coverage
-- Model creation and validation
-- Email service functionality
-- Site detection logic
-- Error handling scenarios
-- API integration mocking
+- Model creation, validation, and the one-config-per-site constraint
+- Django email backend behaviour, including `send_mail()` without an explicit
+  site or request
+- Missing-configuration error handling
+- ForwardEmail API integration is exercised by mocking `requests.post`
 
 ## Development Setup
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.10+
 - Django 4.2+
 - uv (recommended) or pip
 
@@ -215,20 +297,12 @@ uv run make html
 
 ## Deployment Considerations
 
-### Environment Variables
-```bash
-# ForwardEmail API configuration
-FORWARDEMAIL_API_KEY=your_api_key_here
-FORWARDEMAIL_FROM_EMAIL=noreply@yourdomain.com
-FORWARDEMAIL_FROM_NAME="Your App Name"
-```
-
 ### Production Settings
 ```python
 # settings.py
 EMAIL_BACKEND = 'django_forwardemail.backends.ForwardEmailBackend'
 
-# Optional: Configure logging
+# Optional: configure logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -252,61 +326,46 @@ LOGGING = {
 ## Security Considerations
 
 ### API Key Management
-- Store API keys securely using environment variables
-- Use different API keys for different environments
-- Rotate API keys regularly
-- Never commit API keys to version control
-
-### Email Validation
-- The package validates email addresses before sending
-- Implements rate limiting awareness
-- Logs security-relevant events
+- API keys are stored in the `EmailConfiguration` model. Restrict Django admin
+  access to trusted staff.
+- Use different ForwardEmail API keys for different environments.
+- Rotate API keys regularly and update the configuration afterwards.
 
 ### Data Privacy
-- Email content is transmitted securely via HTTPS
-- No email content is stored locally
-- Respects Django's security settings
+- Email content is transmitted over HTTPS to the ForwardEmail API.
+- The package does not store email content locally.
+- Reply-to addresses are sanitized with Django's `sanitize_address`.
 
-## Performance Optimization
-
-### Caching
-- Site configurations are cached to reduce database queries
-- API responses include caching headers
-- Connection pooling for HTTP requests
+## Performance and Async
 
 ### Async Support
-The package is designed to work with Django's async views:
+The synchronous service can be used from Django async views with
+`sync_to_async`:
 ```python
 from asgiref.sync import sync_to_async
-from django_forwardemail.services import EmailService
+from django_forwardemail.services import ForwardEmailService
 
 async def send_welcome_email(user_email):
-    await sync_to_async(EmailService.send_email)(
+    await sync_to_async(ForwardEmailService.send_email)(
         to=user_email,
         subject='Welcome!',
         text='Welcome to our service!',
     )
 ```
 
+For high-volume sending, queue calls with a task runner such as Celery.
+
 ## Monitoring and Logging
 
 ### Log Levels
-- `DEBUG`: Detailed API request/response information
-- `INFO`: Successful email sends and configuration changes
-- `WARNING`: Recoverable errors and fallback usage
-- `ERROR`: Failed email sends and configuration errors
-- `CRITICAL`: System-level failures
+- `DEBUG`: ForwardEmail API request/response details (only when `DEBUG=True`)
+- `INFO`: General operational messages
+- `ERROR`: Failed API requests and service errors
 
-### Metrics
-The package logs metrics suitable for monitoring:
-- Email send success/failure rates
-- API response times
-- Configuration usage patterns
-- Error frequencies
+The logger name is `django_forwardemail`.
 
-## Migration from Other Email Services
+## Migration from Django's send_mail
 
-### From Django's send_mail
 ```python
 # Before
 from django.core.mail import send_mail
@@ -317,9 +376,9 @@ send_mail(
     ['to@example.com'],
 )
 
-# After
-from django_forwardemail.services import EmailService
-EmailService.send_email(
+# After (service class)
+from django_forwardemail.services import ForwardEmailService
+ForwardEmailService.send_email(
     to='to@example.com',
     subject='Subject',
     text='Message',
@@ -327,29 +386,37 @@ EmailService.send_email(
 )
 ```
 
-### From Other Email Services
-The package provides compatibility methods and migration utilities for common email service patterns.
+Alternatively, set `EMAIL_BACKEND` and keep using Django's `send_mail()`
+unchanged.
 
 ## API Reference
 
-### EmailService.send_email()
+### ForwardEmailService.send_email()
+
+Keyword-only classmethod.
 
 **Parameters**:
 - `to` (str, required): Recipient email address
 - `subject` (str, required): Email subject
 - `text` (str, required): Plain text email content
-- `from_email` (str, optional): Sender email address
+- `from_email` (str, optional): Sender email address (uses config default if omitted)
 - `html` (str, optional): HTML email content
-- `reply_to` (str, optional): Reply-to email address
+- `reply_to` (str, optional): Reply-to email address (uses config default if omitted)
 - `request` (HttpRequest, optional): Django request object for site detection
 - `site` (Site, optional): Django Site object
+- `base_url` (str, optional): ForwardEmail API base URL
 
-**Returns**: None
+**Returns**: `dict[str, Any]` — the JSON response from the ForwardEmail API.
 
 **Raises**:
-- `EmailConfigurationError`: When configuration is invalid
-- `ForwardEmailAPIError`: When API request fails
-- `ValidationError`: When email addresses are invalid
+- `django.core.exceptions.ImproperlyConfigured`: when the site cannot be
+  determined or has no `EmailConfiguration`
+- `Exception`: when the API request fails (non-200 response or network error)
+
+### ForwardEmailService.extract_email()
+
+Static method. Given `"Name <email@domain.com>"` or a bare address, returns the
+clean email address as a string.
 
 ## Contributing
 
@@ -361,13 +428,17 @@ The package provides compatibility methods and migration utilities for common em
 5. Submit a pull request
 
 ### Code Standards
-- Follow PEP 8 style guidelines
+- Follow PEP 8 style guidelines (black, ruff)
 - Include type hints
 - Write comprehensive tests
 - Update documentation
-- Use conventional commit messages
 
 ## Changelog
+
+### Version 1.0.1
+- Allow `send_mail()` / the email backend to work without an explicitly
+  provided `site` or `request` by falling back to the current/first site
+- Development status promoted to Production/Stable
 
 ### Version 1.0.0
 - Initial release
@@ -390,11 +461,10 @@ MIT License - see LICENSE file for details.
 
 ## Requirements
 
-- Django 4.2+
-- Python 3.8+
+- Django 4.2+ (tested through Django 6.0)
+- Python 3.10+
+- requests 2.25.0+
 - ForwardEmail account and API key
-- requests library
-- python-dateutil
 
 ## Project Structure
 
@@ -404,7 +474,7 @@ django-forwardemail/
 │   ├── __init__.py              # Package initialization and version
 │   ├── apps.py                  # Django app configuration
 │   ├── models.py                # EmailConfiguration model
-│   ├── services.py              # EmailService implementation
+│   ├── services.py              # ForwardEmailService implementation
 │   ├── backends.py              # Django email backend
 │   ├── admin.py                 # Django admin configuration
 │   └── migrations/              # Database migrations
@@ -414,26 +484,28 @@ django-forwardemail/
 │   ├── __init__.py
 │   ├── settings.py              # Test Django settings
 │   ├── urls.py                  # Test URL configuration
-│   └── test_models.py           # Model tests
+│   ├── test_models.py           # Model tests
+│   └── test_backend.py          # Backend tests
 ├── docs/                        # Sphinx documentation
 │   ├── conf.py                  # Sphinx configuration
 │   ├── index.rst                # Documentation homepage
+│   ├── installation.rst         # Installation guide
+│   ├── configuration.rst        # Configuration guide
+│   ├── usage.rst                # Usage guide
+│   ├── api.rst                  # API reference
 │   └── requirements.txt         # Documentation dependencies
 ├── .github/                     # GitHub workflows and templates
 │   ├── workflows/
-│   │   ├── test.yml            # CI testing workflow
-│   │   └── publish.yml         # PyPI publishing workflow
-│   └── ISSUE_TEMPLATE/         # Issue templates
-│       ├── bug_report.yml
-│       ├── feature_request.yml
-│       ├── question.yml
-│       └── config.yml
+│   │   ├── test.yml             # CI testing workflow
+│   │   └── publish.yml          # PyPI publishing workflow
+│   └── ISSUE_TEMPLATE/          # Issue templates
+├── context7.json               # Context7 indexing configuration
 ├── pyproject.toml              # Package configuration
 ├── README.md                   # Project documentation
 ├── LICENSE                     # MIT license
 ├── CONTRIBUTING.md             # Contributing guidelines
 ├── MANIFEST.in                 # Package manifest
-├── .gitignore                  # Git ignore rules
-├── .readthedocs.yaml          # Read the Docs configuration
-├── llms.txt                   # AI assistant context (basic)
-└── llms-full.txt              # AI assistant context (comprehensive)
+├── .readthedocs.yaml           # Read the Docs configuration
+├── llms.txt                    # AI assistant context (basic)
+└── llms-full.txt               # AI assistant context (comprehensive)
+```

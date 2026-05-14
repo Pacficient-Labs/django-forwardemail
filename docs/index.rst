@@ -38,27 +38,33 @@ Add to your Django settings:
 
    INSTALLED_APPS = [
        # ... other apps
+       'django.contrib.sites',  # Required for multi-site support
        'django_forwardemail',
    ]
 
-Use the service:
+Run migrations and create an ``EmailConfiguration`` for your site (see
+:doc:`installation` and :doc:`configuration`). Then send email with the
+service class:
 
 .. code-block:: python
 
-   from django_forwardemail.services import EmailService
+   from django_forwardemail.services import ForwardEmailService
 
-   EmailService.send_email(
+   ForwardEmailService.send_email(
        to='user@example.com',
        subject='Welcome!',
        text='Welcome to our service!',
        html='<h1>Welcome to our service!</h1>',
    )
 
+``EmailService`` is a backward-compatible alias for ``ForwardEmailService``.
+
 Requirements
 ------------
 
-* Django 4.2+
-* Python 3.8+
+* Django 4.2+ (tested through Django 6.0)
+* Python 3.10+
+* requests 2.25.0+
 * ForwardEmail account and API key
 
 Documentation Sections

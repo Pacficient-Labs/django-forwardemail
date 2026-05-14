@@ -6,14 +6,15 @@ This guide covers the various ways to use django-forwardemail in your Django app
 Basic Email Sending
 --------------------
 
-The simplest way to send emails is using the ``EmailService`` class:
+The simplest way to send emails is using the ``ForwardEmailService`` class
+(``EmailService`` is a backward-compatible alias):
 
 .. code-block:: python
 
-   from django_forwardemail.services import EmailService
-   
+   from django_forwardemail.services import ForwardEmailService
+
    # Send a basic email
-   EmailService.send_email(
+   ForwardForwardEmailService.send_email(
        to='user@example.com',
        subject='Welcome to our service!',
        text='Thank you for signing up. We are excited to have you on board.',
@@ -26,7 +27,7 @@ You can send HTML emails by providing both text and HTML content:
 
 .. code-block:: python
 
-   EmailService.send_email(
+   ForwardEmailService.send_email(
        to='user@example.com',
        subject='Welcome to our service!',
        text='Thank you for signing up. We are excited to have you on board.',
@@ -48,7 +49,7 @@ The ``send_email`` method supports several optional parameters:
 
 .. code-block:: python
 
-   EmailService.send_email(
+   ForwardEmailService.send_email(
        to='user@example.com',
        subject='Custom Email',
        text='Email content',
@@ -72,7 +73,7 @@ Registration Confirmation
    from django.shortcuts import render, redirect
    from django.contrib.auth import login
    from django.contrib import messages
-   from django_forwardemail.services import EmailService
+   from django_forwardemail.services import ForwardEmailService
    
    def register_view(request):
        if request.method == 'POST':
@@ -82,7 +83,7 @@ Registration Confirmation
                
                # Send welcome email
                try:
-                   EmailService.send_email(
+                   ForwardEmailService.send_email(
                        to=user.email,
                        subject='Welcome to Example.com!',
                        text=f'Hi {user.first_name}, welcome to our platform!',
@@ -126,7 +127,7 @@ Password Reset
                )
                
                # Send reset email
-               EmailService.send_email(
+               ForwardEmailService.send_email(
                    to=user.email,
                    subject='Password Reset Request',
                    text=f'Click the link to reset your password: {reset_url}',
@@ -166,7 +167,7 @@ You can render Django templates for email content:
        # Create plain text version
        text_content = strip_tags(html_content)
        
-       EmailService.send_email(
+       ForwardEmailService.send_email(
            to=user.email,
            subject=f'New notification: {notification_data.title}',
            text=text_content,
@@ -215,7 +216,7 @@ For multi-site Django deployments, you can specify which site configuration to u
        # Get specific site
        site = Site.objects.get(domain=site_domain)
        
-       EmailService.send_email(
+       ForwardEmailService.send_email(
            to=user_email,
            subject=f'Welcome to {site.name}!',
            text=f'Thank you for joining {site.name}.',
@@ -237,7 +238,7 @@ For sending emails to multiple recipients, send them individually to respect rat
        
        for user in users:
            try:
-               EmailService.send_email(
+               ForwardEmailService.send_email(
                    to=user.email,
                    subject=subject,
                    text=content,
@@ -312,7 +313,7 @@ For Django async views, wrap the email sending in ``sync_to_async``:
        }
        
        # Wrap synchronous email sending for async context
-       await sync_to_async(EmailService.send_email)(**email_data)
+       await sync_to_async(ForwardEmailService.send_email)(**email_data)
        
        return JsonResponse({'status': 'Email sent successfully'})
 
@@ -323,14 +324,14 @@ Always handle potential errors when sending emails:
 
 .. code-block:: python
 
-   from django_forwardemail.services import EmailService
+   from django_forwardemail.services import ForwardEmailService
    import logging
    
    logger = logging.getLogger(__name__)
    
    def safe_send_email(to, subject, message):
        try:
-           EmailService.send_email(
+           ForwardEmailService.send_email(
                to=to,
                subject=subject,
                text=message
@@ -341,40 +342,47 @@ Always handle potential errors when sending emails:
            logger.error(f"Failed to send email to {to}: {str(e)}")
            return False
 
-Common Error Types
-~~~~~~~~~~~~~~~~~~
+What Gets Raised
+~~~~~~~~~~~~~~~~
 
-- **Configuration Error**: Missing or invalid API key
-- **Network Error**: Connection issues with ForwardEmail API
-- **Validation Error**: Invalid email addresses
-- **Rate Limit Error**: Too many emails sent too quickly
-- **Authentication Error**: Invalid API credentials
+``ForwardEmailService.send_email()`` raises two kinds of errors:
+
+- ``django.core.exceptions.ImproperlyConfigured`` -- the site could not be
+  determined, or the resolved site has no ``EmailConfiguration``.
+- ``Exception`` -- the ForwardEmail API request failed (a non-200 response or a
+  network error such as a timeout or connection error). The message includes
+  the status code and response body when available.
 
 Testing Email Functionality
 ----------------------------
 
-For testing, you can use Django's email testing utilities:
+``ForwardEmailService.send_email()`` calls the ForwardEmail API directly and
+does **not** go through Django's ``EMAIL_BACKEND``, so the ``locmem`` backend
+and ``mail.outbox`` do not capture it. Instead, mock ``requests.post`` -- the
+single HTTP call the service makes:
 
 .. code-block:: python
 
+   from unittest.mock import patch
    from django.test import TestCase
-   from django.core import mail
-   from django_forwardemail.services import EmailService
-   
+   from django_forwardemail.services import ForwardEmailService
+
    class EmailTestCase(TestCase):
-       def test_email_sending(self):
-           # Use Django's test email backend
-           with self.settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'):
-               EmailService.send_email(
-                   to='test@example.com',
-                   subject='Test Email',
-                   text='Test message'
-               )
-               
-               # Check that email was sent
-               self.assertEqual(len(mail.outbox), 1)
-               self.assertEqual(mail.outbox[0].to, ['test@example.com'])
-               self.assertEqual(mail.outbox[0].subject, 'Test Email')
+       @patch('django_forwardemail.services.requests.post')
+       def test_email_sending(self, mock_post):
+           mock_post.return_value.status_code = 200
+           mock_post.return_value.json.return_value = {'id': 'abc123'}
+
+           ForwardEmailService.send_email(
+               to='test@example.com',
+               subject='Test Email',
+               text='Test message',
+           )
+
+           mock_post.assert_called_once()
+           args, kwargs = mock_post.call_args
+           self.assertEqual(kwargs['json']['to'], 'test@example.com')
+           self.assertEqual(kwargs['json']['subject'], 'Test Email')
 
 Best Practices
 --------------
