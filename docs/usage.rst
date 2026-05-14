@@ -14,7 +14,7 @@ The simplest way to send emails is using the ``ForwardEmailService`` class
    from django_forwardemail.services import ForwardEmailService
 
    # Send a basic email
-   ForwardForwardEmailService.send_email(
+   ForwardEmailService.send_email(
        to='user@example.com',
        subject='Welcome to our service!',
        text='Thank you for signing up. We are excited to have you on board.',
