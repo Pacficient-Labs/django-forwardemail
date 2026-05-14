@@ -4,8 +4,9 @@ Installation
 Requirements
 ------------
 
-* Django 4.2+
-* Python 3.8+
+* Django 4.2+ (tested through Django 6.0)
+* Python 3.10+
+* requests 2.25.0+
 * ForwardEmail account and API key
 
 Installing the Package
@@ -26,12 +27,14 @@ Or using uv (recommended):
 Django Configuration
 --------------------
 
-Add ``django_forwardemail`` to your ``INSTALLED_APPS`` in your Django settings:
+Add ``django.contrib.sites`` and ``django_forwardemail`` to your
+``INSTALLED_APPS`` in your Django settings:
 
 .. code-block:: python
 
    INSTALLED_APPS = [
        # ... other apps
+       'django.contrib.sites',  # Required for multi-site support
        'django_forwardemail',
    ]
 
@@ -65,39 +68,40 @@ ForwardEmail Account Setup
 3. Configure your domain and email addresses in ForwardEmail
 4. Note your API key for configuration in Django
 
-Environment Variables
----------------------
+Create an Email Configuration
+-----------------------------
 
-It's recommended to store sensitive configuration in environment variables:
-
-.. code-block:: bash
-
-   # .env file
-   FORWARDEMAIL_API_KEY=your_api_key_here
-   FORWARDEMAIL_FROM_EMAIL=noreply@yourdomain.com
-   FORWARDEMAIL_FROM_NAME="Your App Name"
-
-Then in your Django settings:
+Settings are stored in the ``EmailConfiguration`` model, one per Django
+``Site``. Create one through the Django admin (Django ForwardEmail → Email
+Configurations) or programmatically:
 
 .. code-block:: python
 
-   import os
-   
-   FORWARDEMAIL_API_KEY = os.getenv('FORWARDEMAIL_API_KEY')
-   FORWARDEMAIL_FROM_EMAIL = os.getenv('FORWARDEMAIL_FROM_EMAIL')
-   FORWARDEMAIL_FROM_NAME = os.getenv('FORWARDEMAIL_FROM_NAME')
+   from django.contrib.sites.models import Site
+   from django_forwardemail.models import EmailConfiguration
+
+   EmailConfiguration.objects.create(
+       site=Site.objects.get_current(),
+       api_key='your-forwardemail-api-key',
+       from_email='noreply@example.com',
+       from_name='Example Site',
+       reply_to='support@example.com',
+   )
+
+See :doc:`configuration` for multi-site setups and details.
 
 Verification
 ------------
 
-To verify your installation is working correctly, you can test sending an email:
+To verify your installation is working correctly, you can test sending an email
+once an ``EmailConfiguration`` exists for your site:
 
 .. code-block:: python
 
-   from django_forwardemail.services import EmailService
-   
+   from django_forwardemail.services import ForwardEmailService
+
    try:
-       EmailService.send_email(
+       ForwardEmailService.send_email(
            to='test@example.com',
            subject='Test Email',
            text='This is a test email from django-forwardemail',
@@ -111,4 +115,3 @@ Next Steps
 
 * Configure your :doc:`configuration` settings
 * Learn about :doc:`usage` patterns
-* Set up :doc:`multi-site` support if needed

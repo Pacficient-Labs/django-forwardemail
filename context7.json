@@ -1,0 +1,17 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "django-forwardemail",
+  "description": "Django integration for the ForwardEmail API with multi-site support, providing an email backend and a service class.",
+  "folders": [],
+  "excludeFolders": [],
+  "excludeFiles": [],
+  "rules": [
+    "Add both 'django.contrib.sites' and 'django_forwardemail' to INSTALLED_APPS, then run migrations before sending email.",
+    "Configuration is stored in the EmailConfiguration model (one per Django Site) and managed through the Django admin or the ORM. There are no FORWARDEMAIL_* environment variables or settings; the only package setting is FORWARD_EMAIL_BASE_URL.",
+    "ForwardEmailService is the canonical class; EmailService is a backward-compatible alias for it.",
+    "ForwardEmailService.send_email() is a keyword-only classmethod. It returns the ForwardEmail API response as a dict and raises django.core.exceptions.ImproperlyConfigured when the site or its EmailConfiguration is missing.",
+    "The ForwardEmail API sends to a single recipient per request; loop over recipients to send to multiple addresses.",
+    "Set EMAIL_BACKEND to 'django_forwardemail.backends.ForwardEmailBackend' to use Django's standard send_mail() and EmailMultiAlternatives."
+  ],
+  "previousVersions": []
+}

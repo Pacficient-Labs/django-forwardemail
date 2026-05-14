@@ -1,12 +1,14 @@
 Configuration
 =============
 
-django-forwardemail provides flexible configuration options for different deployment scenarios and multi-site setups.
+django-forwardemail stores its settings in a Django model so that each site in
+a multi-site project can have its own ForwardEmail configuration.
 
 EmailConfiguration Model
 -------------------------
 
-The package uses a Django model to store site-specific email configurations. Each Django Site can have its own ForwardEmail settings.
+The package uses the ``EmailConfiguration`` model to store site-specific email
+settings. Each Django ``Site`` has exactly one configuration.
 
 Model Fields
 ~~~~~~~~~~~~
@@ -14,193 +16,194 @@ Model Fields
 .. code-block:: python
 
    class EmailConfiguration(models.Model):
-       site = models.OneToOneField(Site, on_delete=models.CASCADE)
        api_key = models.CharField(max_length=255)
-       from_email = models.EmailField(blank=True, null=True)
-       from_name = models.CharField(max_length=255, blank=True, null=True)
-       reply_to = models.EmailField(blank=True, null=True)
+       from_email = models.EmailField()
+       from_name = models.CharField(max_length=255)
+       reply_to = models.EmailField()
+       site = models.ForeignKey(Site, on_delete=models.CASCADE)
        created_at = models.DateTimeField(auto_now_add=True)
        updated_at = models.DateTimeField(auto_now=True)
 
-Creating Configurations
-~~~~~~~~~~~~~~~~~~~~~~~
+       class Meta:
+           unique_together = [["site"]]  # One configuration per site
 
-You can create email configurations through the Django admin interface or programmatically:
+All fields except the timestamps are required.
+
+Creating Configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can create email configurations through the Django admin interface or
+programmatically:
 
 .. code-block:: python
 
    from django.contrib.sites.models import Site
    from django_forwardemail.models import EmailConfiguration
-   
+
    # Get or create a site
    site, created = Site.objects.get_or_create(
        domain='example.com',
        defaults={'name': 'Example Site'}
    )
-   
+
    # Create email configuration
    config = EmailConfiguration.objects.create(
        site=site,
        api_key='your_forwardemail_api_key',
        from_email='noreply@example.com',
        from_name='Example Site',
-       reply_to='support@example.com'
+       reply_to='support@example.com',
    )
 
 Django Admin Integration
 ------------------------
 
-The package includes Django admin integration for easy configuration management:
+The package registers ``EmailConfiguration`` with the Django admin so you can
+create, view, and edit configurations for each site without touching code. The
+admin list view shows the site, from name, from email, and reply-to address,
+and supports searching and filtering by site.
 
-.. code-block:: python
+Package Settings
+----------------
 
-   # In your admin interface, you can:
-   # 1. View all email configurations
-   # 2. Create new configurations for different sites
-   # 3. Edit existing configurations
-   # 4. Test email sending directly from admin
+The package itself has only one optional setting. All credentials live in the
+``EmailConfiguration`` model rather than in settings or environment variables.
 
-The admin interface provides a user-friendly way to manage multiple site configurations without touching code.
+``FORWARD_EMAIL_BASE_URL``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Environment-Based Configuration
--------------------------------
-
-For simple single-site deployments, you can use environment variables:
+Base URL for the ForwardEmail API. Defaults to ``https://api.forwardemail.net``.
+You typically only change this for testing or a custom endpoint.
 
 .. code-block:: python
 
    # settings.py
-   import os
-   
-   # ForwardEmail configuration
-   FORWARDEMAIL_API_KEY = os.getenv('FORWARDEMAIL_API_KEY')
-   FORWARDEMAIL_FROM_EMAIL = os.getenv('FORWARDEMAIL_FROM_EMAIL', 'noreply@example.com')
-   FORWARDEMAIL_FROM_NAME = os.getenv('FORWARDEMAIL_FROM_NAME', 'Your App')
-   FORWARDEMAIL_REPLY_TO = os.getenv('FORWARDEMAIL_REPLY_TO')
+   FORWARD_EMAIL_BASE_URL = 'https://api.forwardemail.net'
+
+``EMAIL_BACKEND``
+~~~~~~~~~~~~~~~~~
+
+Set this to use ForwardEmail with Django's standard email functions:
+
+.. code-block:: python
+
+   # settings.py
+   EMAIL_BACKEND = 'django_forwardemail.backends.ForwardEmailBackend'
 
 Site Detection Logic
 --------------------
 
-The package uses intelligent site detection to determine which configuration to use:
+``ForwardEmailService.send_email()`` resolves which configuration to use as
+follows:
 
-1. **Explicit Site Parameter**: If a ``site`` parameter is passed to ``send_email()``
-2. **Request-Based Detection**: If a ``request`` parameter is provided, extract site from request
-3. **Current Site Fallback**: Use Django's ``get_current_site()`` function
-4. **Default Site**: Fall back to the default site (ID=1)
+1. **Explicit Site Parameter**: If a ``site`` argument is passed, it is used.
+2. **Request-Based Detection**: If a ``request`` argument is provided,
+   ``get_current_site(request)`` is used (it must resolve to a real ``Site``).
+3. **Current Site Fallback**: ``Site.objects.get_current()``.
+4. **First Site Fallback**: ``Site.objects.first()``.
+5. If no site can be determined, ``ImproperlyConfigured`` is raised.
 
 .. code-block:: python
 
    from django.contrib.sites.models import Site
-   from django_forwardemail.services import EmailService
-   
+   from django_forwardemail.services import ForwardEmailService
+
    # Explicit site specification
    site = Site.objects.get(domain='example.com')
-   EmailService.send_email(
+   ForwardEmailService.send_email(
        to='user@example.com',
        subject='Welcome!',
        text='Welcome message',
-       site=site  # Explicit site
+       site=site,  # Explicit site
    )
-   
+
    # Request-based detection (in views)
    def my_view(request):
-       EmailService.send_email(
+       ForwardEmailService.send_email(
            to='user@example.com',
            subject='Welcome!',
            text='Welcome message',
-           request=request  # Site extracted from request
+           request=request,  # Site extracted from request
        )
 
 Multi-Site Configuration
 ------------------------
 
-For multi-site Django deployments, create separate configurations for each site:
+For multi-site Django deployments, create separate configurations for each
+site:
 
 .. code-block:: python
 
    from django.contrib.sites.models import Site
    from django_forwardemail.models import EmailConfiguration
-   
+
    # Site 1: Main website
    main_site = Site.objects.create(domain='example.com', name='Main Site')
    EmailConfiguration.objects.create(
        site=main_site,
        api_key='main_site_api_key',
        from_email='noreply@example.com',
-       from_name='Example.com'
+       from_name='Example.com',
+       reply_to='support@example.com',
    )
-   
+
    # Site 2: Blog subdomain
    blog_site = Site.objects.create(domain='blog.example.com', name='Blog')
    EmailConfiguration.objects.create(
        site=blog_site,
        api_key='blog_api_key',
        from_email='blog@example.com',
-       from_name='Example Blog'
+       from_name='Example Blog',
+       reply_to='support@example.com',
    )
 
-Configuration Fallbacks
------------------------
+How Defaults Are Applied
+------------------------
 
-The package implements fallback mechanisms to ensure emails can be sent even with incomplete configuration:
+When ``send_email()`` resolves a site, it looks up that site's
+``EmailConfiguration`` and applies these rules:
 
-1. **API Key**: Required - will raise error if missing
-2. **From Email**: Falls back to Django's ``DEFAULT_FROM_EMAIL`` setting
-3. **From Name**: Falls back to site name or empty string
-4. **Reply To**: Optional - omitted if not configured
-
-.. code-block:: python
-
-   # Django settings.py fallbacks
-   DEFAULT_FROM_EMAIL = 'noreply@yourdomain.com'
-   SERVER_EMAIL = 'server@yourdomain.com'
+1. **API key**: Always taken from the configuration. If the resolved site has
+   no ``EmailConfiguration``, ``ImproperlyConfigured`` is raised.
+2. **From email**: If ``from_email`` is not passed, the configured
+   ``from_name`` and ``from_email`` are combined into the sender. If
+   ``from_email`` is passed without a display name, the configured
+   ``from_name`` is added.
+3. **Reply-to**: If ``reply_to`` is not passed, the configured ``reply_to`` is
+   used.
 
 Security Considerations
 -----------------------
 
 API Key Storage
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
-Never store API keys in version control. Use environment variables or secure configuration management:
-
-.. code-block:: bash
-
-   # Production environment
-   export FORWARDEMAIL_API_KEY="your_secure_api_key"
-   
-   # Development .env file (add to .gitignore)
-   FORWARDEMAIL_API_KEY=your_dev_api_key
+API keys are stored in the ``EmailConfiguration`` model. Restrict Django admin
+access to trusted staff, and use Django's standard secret-management practices
+for your database credentials.
 
 Key Rotation
 ~~~~~~~~~~~~
 
 Regularly rotate your ForwardEmail API keys:
 
-1. Generate new API key in ForwardEmail dashboard
-2. Update configuration in Django admin or environment variables
-3. Test email sending with new key
-4. Revoke old API key
+1. Generate a new API key in the ForwardEmail dashboard
+2. Update the ``EmailConfiguration`` (via Django admin or the ORM)
+3. Test email sending with the new key
+4. Revoke the old API key
 
 Per-Environment Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use different API keys for different environments:
-
-.. code-block:: python
-
-   # settings/production.py
-   FORWARDEMAIL_API_KEY = os.getenv('FORWARDEMAIL_PROD_API_KEY')
-   
-   # settings/staging.py
-   FORWARDEMAIL_API_KEY = os.getenv('FORWARDEMAIL_STAGING_API_KEY')
-   
-   # settings/development.py
-   FORWARDEMAIL_API_KEY = os.getenv('FORWARDEMAIL_DEV_API_KEY')
+Use different API keys for development, staging, and production by storing the
+appropriate key in each environment's database, or by pointing
+``FORWARD_EMAIL_BASE_URL`` at a non-production endpoint during testing.
 
 Logging Configuration
 ---------------------
 
-Configure logging to monitor email sending:
+Configure logging to monitor email sending. The package logs under the
+``django_forwardemail`` logger name:
 
 .. code-block:: python
 
@@ -239,35 +242,26 @@ Configure logging to monitor email sending:
 Testing Configuration
 ---------------------
 
-For testing environments, you might want to use a test configuration:
+For tests, mock the ForwardEmail API rather than sending real requests. The
+service issues a single ``requests.post`` call, so patching it is sufficient:
 
 .. code-block:: python
 
-   # settings/test.py
-   if 'test' in sys.argv:
-       # Use a test API key or mock the service
-       FORWARDEMAIL_API_KEY = 'test_api_key'
-       
-       # Or use Django's locmem backend for testing
-       EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+   from unittest.mock import patch
 
-Configuration Validation
--------------------------
-
-The package validates configurations before sending emails:
-
-- API key presence and format
-- Email address validity
-- Site configuration completeness
-
-Invalid configurations will raise descriptive errors to help with debugging.
+   @patch('django_forwardemail.services.requests.post')
+   def test_something(mock_post):
+       mock_post.return_value.status_code = 200
+       mock_post.return_value.json.return_value = {}
+       # ... call code that sends email ...
 
 Best Practices
 --------------
 
-1. **Use Environment Variables**: Store sensitive data in environment variables
-2. **Separate Environments**: Use different API keys for dev/staging/production
-3. **Monitor Logs**: Set up logging to track email sending success/failure
-4. **Test Configurations**: Verify email sending works after configuration changes
-5. **Backup Configurations**: Export configurations before making changes
-6. **Document Settings**: Keep track of which sites use which configurations
+1. **Restrict admin access**: API keys live in the database and are editable
+   through the Django admin.
+2. **Separate environments**: Use different API keys for dev/staging/production.
+3. **Monitor logs**: Set up logging to track email sending success/failure.
+4. **Test configurations**: Verify email sending works after configuration
+   changes.
+5. **Document settings**: Keep track of which sites use which configurations.

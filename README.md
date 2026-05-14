@@ -361,10 +361,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 - **Documentation**: [https://django-forwardemail.readthedocs.io/](https://django-forwardemail.readthedocs.io/)
-- **Issues**: [https://github.com/thrillwiki/django-forwardemail/issues](https://github.com/thrillwiki/django-forwardemail/issues)
+- **Issues**: [https://github.com/Pacficient-Labs/django-forwardemail/issues](https://github.com/Pacficient-Labs/django-forwardemail/issues)
 - **ForwardEmail Documentation**: [https://forwardemail.net/docs](https://forwardemail.net/docs)
 
 ## Changelog
+
+### 1.0.1
+
+- Allow `send_mail()` and the email backend to work without an explicitly provided `site` or `request` by falling back to the current site (and then the first site)
+- Development status promoted to Production/Stable
 
 ### 1.0.0 (2025-08-30)
 

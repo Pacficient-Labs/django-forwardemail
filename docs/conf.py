@@ -19,8 +19,8 @@ django.setup()
 project = 'django-forwardemail'
 copyright = '2025, Pacficient Labs'
 author = 'Pacficient Labs'
-release = '1.0.0'
-version = '1.0.0'
+release = '1.0.1'
+version = '1.0.1'
 
 # -- General configuration ---------------------------------------------------
 extensions = [
