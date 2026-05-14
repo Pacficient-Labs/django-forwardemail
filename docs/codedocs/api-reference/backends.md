@@ -73,8 +73,8 @@ from django.core.mail import EmailMessage, get_connection
 connection = get_connection(backend="django_forwardemail.backends.ForwardEmailBackend")
 
 messages = [
-    EmailMessage("One", "Body one", "from@example.com", ["a@example.com"] connection=connection),
-    EmailMessage("Two", "Body two", "from@example.com", ["b@example.com"] connection=connection),
+    EmailMessage("One", "Body one", "from@example.com", ["a@example.com"], connection=connection),
+    EmailMessage("Two", "Body two", "from@example.com", ["b@example.com"], connection=connection),
 ]
 
 sent = connection.send_messages(messages)
