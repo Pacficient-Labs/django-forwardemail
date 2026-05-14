@@ -74,7 +74,8 @@ class ForwardEmailBackend(BaseEmailBackend):
         # Get the first recipient (ForwardEmail API sends to one recipient at a time)
         to_email = email_message.to[0]
 
-        # Get site from connection or instance
+        # Get site from connection or instance; if neither is set, ForwardEmailService
+        # will fall back to Site.objects.get_current() automatically.
         site = None
         if hasattr(email_message, "connection") and hasattr(
             email_message.connection, "site"
@@ -83,32 +84,14 @@ class ForwardEmailBackend(BaseEmailBackend):
         else:
             site = self.site
 
-        if not site:
-            raise ValueError("Either request or site must be provided")
-
-        # Import here to avoid import-time Django configuration issues
-        from .models import EmailConfiguration
-
-        # Get the site's email configuration
-        try:
-            config = EmailConfiguration.objects.get(site=site)
-        except EmailConfiguration.DoesNotExist as e:
-            raise ValueError(
-                f"Email configuration not found for site: {site.domain}"
-            ) from e
-
-        # Get the from email, falling back to site's default if not provided
+        # Get the from email; if absent, let the service use the config default.
         from_email = None
         if email_message.from_email:
             from_email = sanitize_address(
                 email_message.from_email, email_message.encoding
             )
-        else:
-            from_email = f"{config.from_name} <{config.from_email}>"
-
-        # Extract clean email address if needed
-        if from_email and "<" in from_email:
-            from_email = ForwardEmailService.extract_email(from_email)
+            if from_email and "<" in from_email:
+                from_email = ForwardEmailService.extract_email(from_email)
 
         # Get reply-to from message headers or use default
         reply_to = None
