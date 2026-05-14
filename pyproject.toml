@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-forwardemail"
-version = "1.0.0"
+version = "1.0.1"
 description = "Django integration for ForwardEmail API with multi-site support"
 readme = "README.md"
 requires-python = ">=3.10"
