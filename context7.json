@@ -1,5 +1,7 @@
 {
   "$schema": "https://context7.com/schema/context7.json",
+  "url": "https://context7.com/pacficient-labs/django-forwardemail",
+  "public_key": "pk_rSqKA7OYz6ReSCYxF0l4s",
   "projectTitle": "django-forwardemail",
   "description": "Django integration for the ForwardEmail API with multi-site support, providing an email backend and a service class.",
   "folders": [],
