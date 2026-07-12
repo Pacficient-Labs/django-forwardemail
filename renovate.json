@@ -35,13 +35,18 @@
       "automerge": true
     },
     {
-      "description": "Never automerge the PyPI publish action: it only runs on release and is not exercised by the PR test workflow",
+      "description": "Override: never automerge twine — only exercised by the release workflow (twine check on publish), not by PR CI",
+      "matchPackageNames": ["twine"],
+      "automerge": false
+    },
+    {
+      "description": "Override: never automerge the PyPI publish action — only runs on release and is not exercised by the PR test workflow",
       "matchManagers": ["github-actions"],
       "matchPackageNames": ["pypa/gh-action-pypi-publish"],
       "automerge": false
     },
     {
-      "description": "Require Dependency Dashboard approval for all major updates and never automerge them",
+      "description": "Override: require Dependency Dashboard approval for all major updates and never automerge them",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true,
       "automerge": false
