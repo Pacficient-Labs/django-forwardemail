@@ -17,13 +17,14 @@
   },
   "packageRules": [
     {
-      "description": "Automerge dev/test/lint/build tooling (dev and docs extras are dev-only; PEP 621 emits depType project.optional-dependencies, plus PEP 735 dependency-groups)",
+      "description": "Automerge dev/test/lint tooling in the optional-dependencies extras and PEP 735 dependency-groups (PEP 621 emits depType project.optional-dependencies for every extra; release-only/docs tools are excluded again by the overrides below)",
       "matchDepTypes": ["project.optional-dependencies", "dependency-groups"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "automerge": true
     },
     {
-      "description": "Automerge non-major updates for stable (>=1.0.0) runtime dependencies",
+      "description": "Automerge non-major updates for stable (>=1.0.0) runtime dependencies (project.dependencies only; build-system.requires is only exercised by the release build)",
+      "matchDepTypes": ["project.dependencies"],
       "matchUpdateTypes": ["minor", "patch"],
       "matchCurrentVersion": "!/^0/",
       "automerge": true
@@ -33,6 +34,11 @@
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "automerge": true
+    },
+    {
+      "description": "Override: never automerge docs tooling — the docs extra is built by Read the Docs, not exercised by PR CI",
+      "matchPackageNames": ["sphinx", "sphinx-rtd-theme"],
+      "automerge": false
     },
     {
       "description": "Override: never automerge twine — only exercised by the release workflow (twine check on publish), not by PR CI",
