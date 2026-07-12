@@ -12,18 +12,13 @@
   "minimumReleaseAge": "3 days",
   "lockFileMaintenance": {
     "enabled": true,
-    "automerge": true,
+    "automerge": false,
     "schedule": ["before 5am on monday"]
   },
   "packageRules": [
     {
-      "description": "Automerge lock file maintenance (lowest-risk update type)",
-      "matchUpdateTypes": ["lockFileMaintenance"],
-      "automerge": true
-    },
-    {
-      "description": "Automerge dev/test/lint/build tooling (dev and docs extras plus dependency-groups)",
-      "matchDepTypes": ["dev", "docs", "dependency-groups"],
+      "description": "Automerge dev/test/lint/build tooling (dev and docs extras are dev-only; PEP 621 emits depType project.optional-dependencies, plus PEP 735 dependency-groups)",
+      "matchDepTypes": ["project.optional-dependencies", "dependency-groups"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "automerge": true
     },
@@ -38,6 +33,12 @@
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "automerge": true
+    },
+    {
+      "description": "Never automerge the PyPI publish action: it only runs on release and is not exercised by the PR test workflow",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["pypa/gh-action-pypi-publish"],
+      "automerge": false
     },
     {
       "description": "Require Dependency Dashboard approval for all major updates and never automerge them",
