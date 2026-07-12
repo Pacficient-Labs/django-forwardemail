@@ -1,6 +1,61 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:best-practices",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "schedule:weekly"
+  ],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "internalChecksFilter": "strict",
+  "minimumReleaseAge": "3 days",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": false,
+    "schedule": ["before 5am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Automerge dev/test/lint tooling in the optional-dependencies extras and PEP 735 dependency-groups (PEP 621 emits depType project.optional-dependencies for every extra; release-only/docs tools are excluded again by the overrides below)",
+      "matchDepTypes": ["project.optional-dependencies", "dependency-groups"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge non-major updates for stable (>=1.0.0) runtime dependencies (project.dependencies only; build-system.requires is only exercised by the release build)",
+      "matchDepTypes": ["project.dependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "Automerge GitHub Actions minor, patch and digest updates",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true
+    },
+    {
+      "description": "Override: never automerge docs tooling — the docs extra is built by Read the Docs, not exercised by PR CI",
+      "matchPackageNames": ["sphinx", "sphinx-rtd-theme"],
+      "automerge": false
+    },
+    {
+      "description": "Override: never automerge twine — only exercised by the release workflow (twine check on publish), not by PR CI",
+      "matchPackageNames": ["twine"],
+      "automerge": false
+    },
+    {
+      "description": "Override: never automerge the PyPI publish action — only runs on release and is not exercised by the PR test workflow",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["pypa/gh-action-pypi-publish"],
+      "automerge": false
+    },
+    {
+      "description": "Override: require Dependency Dashboard approval for all major updates and never automerge them",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "automerge": false
+    }
   ]
 }
