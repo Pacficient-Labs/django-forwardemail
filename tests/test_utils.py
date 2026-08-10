@@ -15,6 +15,12 @@ class TestSanitizeAddress:
             ("Name <user@example.com>", "Name <user@example.com>"),
             ('"Name, Inc" <user@example.com>', '"Name, Inc" <user@example.com>'),
             ("  user@example.com  ", "user@example.com"),
+            ("(comment) user@example.com", "user@example.com"),
+            ('"quoted local"@example.com', '"quoted local"@example.com'),
+            ("user.name+tag@sub.example.co.uk", "user.name+tag@sub.example.co.uk"),
+            ("user@[192.168.0.1]", "user@[192.168.0.1]"),
+            ("webmaster@localhost", "webmaster@localhost"),
+            ("Dr. Who <user@example.com>", '"Dr. Who" <user@example.com>'),
         ],
     )
     def test_plain_addresses(self, addr, expected):
@@ -51,6 +57,31 @@ class TestSanitizeAddress:
         ],
     )
     def test_invalid_addresses_raise(self, addr):
+        with pytest.raises(ValueError, match="Invalid address"):
+            sanitize_address(addr)
+
+    @pytest.mark.parametrize(
+        "addr",
+        [
+            # The stdlib parser recovers from all of these rather than
+            # raising, so the helper has to reject them itself: without that,
+            # the first truncates to "user@example.com" and the rest format as
+            # the null address "<>".
+            "user@example.com trailing garbage",
+            "user@example..com",
+            "user@.com",
+            "user@example.com.",
+            "user@a@example.com",
+            "not-an-address",
+            "Name <user@example.com",
+            "user@example.com>",
+            "<>",
+            "Name <>",
+            ("Name", "@example.com"),
+            ("Name", "user@"),
+        ],
+    )
+    def test_malformed_addresses_are_not_silently_repaired(self, addr):
         with pytest.raises(ValueError, match="Invalid address"):
             sanitize_address(addr)
 

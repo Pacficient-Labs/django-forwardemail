@@ -8,7 +8,7 @@ below is built on :class:`email.headerregistry.Address` and produces the same
 output Django's helper did.
 """
 
-from email.errors import HeaderParseError
+from email.errors import HeaderParseError, InvalidHeaderDefect
 from email.header import Header
 from email.headerregistry import Address, AddressHeader, HeaderRegistry
 from email.utils import formataddr
@@ -29,15 +29,23 @@ def _parse_mailbox(addr: str) -> tuple[str, str, str]:
         Tuple of display name, local part and domain
 
     Raises:
-        ValueError: If the string is not exactly one mailbox
+        ValueError: If the string is not exactly one well-formed mailbox
     """
     try:
-        header = cast(AddressHeader, _header_registry("to", addr))
-        addresses = header.addresses
+        header = _header_registry("to", addr)
+        addresses = cast(AddressHeader, header).addresses
     except (HeaderParseError, ValueError, IndexError) as exc:
         raise ValueError(f'Invalid address "{addr}"') from exc
 
-    if len(addresses) != 1:
+    # The parser recovers from bad syntax instead of raising: it truncates
+    # "user@example.com junk" to the first mailbox and hands back empty parts
+    # for "user@example..com", which would format as the null address "<>".
+    # InvalidHeaderDefect marks exactly those recoveries. Other defects are
+    # left alone because valid addresses raise them too -- non-ASCII local
+    # parts and obsolete whitespace, for instance.
+    if len(addresses) != 1 or any(
+        isinstance(defect, InvalidHeaderDefect) for defect in header.defects
+    ):
         raise ValueError(f'Invalid address "{addr}"')
 
     mailbox = addresses[0]
@@ -53,6 +61,10 @@ def sanitize_address(addr: str | tuple[str, str], encoding: str = "utf-8") -> st
     Non-ASCII display names and local parts are RFC 2047 encoded, and non-ASCII
     domains are converted to Punycode.
 
+    Malformed input is rejected rather than repaired, which is marginally
+    stricter than Django's helper: it returned ``"not-an-address"`` unchanged
+    and silently closed an unterminated ``"Name <user@example.com"``.
+
     Args:
         addr: Either an address string (``"Name <user@example.com>"`` or
             ``"user@example.com"``) or a ``(name, address)`` tuple
@@ -64,6 +76,7 @@ def sanitize_address(addr: str | tuple[str, str], encoding: str = "utf-8") -> st
     Raises:
         ValueError: If the address is missing, malformed, or contains newlines
     """
+    original = addr
     if isinstance(addr, tuple):
         display_name, address = addr
         address = str(address)
@@ -77,6 +90,10 @@ def sanitize_address(addr: str | tuple[str, str], encoding: str = "utf-8") -> st
         if "\n" in addr or "\r" in addr:
             raise ValueError("Invalid address; address parts cannot contain newlines.")
         display_name, localpart, domain = _parse_mailbox(addr)
+
+    # An empty part formats as the null address "<>", never something to send.
+    if not localpart or not domain:
+        raise ValueError(f'Invalid address "{original}"')
 
     display_name = str(display_name)
     if any("\n" in part or "\r" in part for part in (display_name, localpart, domain)):
