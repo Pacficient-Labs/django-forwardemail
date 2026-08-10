@@ -64,7 +64,9 @@ elif "<" not in from_email:
 
 ### Reply-to sanitation
 
-The service calls Django's `sanitize_address(reply_to, "utf-8")` before sending. That keeps the reply-to header normalized and aligned with Django's email handling behavior.
+The service calls `django_forwardemail.utils.sanitize_address(reply_to)` before sending. That keeps the reply-to header normalized, punycodes non-ASCII domains, RFC 2047 encodes non-ASCII display names, and rejects newlines that would allow header injection.
+
+This helper replaces Django's internal `sanitize_address()`, which is deprecated since Django 6.0 and removed in Django 7.0. It is built on Python's `email.headerregistry.Address` and produces the same output, so the behavior is unchanged across Django versions.
 
 ### HTML handling in the backend
 
@@ -108,12 +110,11 @@ message.send()
 This pattern handles per-recipient fan-out explicitly so you do not lose recipients behind `to[0]`:
 
 ```python
-from django.core.mail import EmailMessage, get_connection
+from django.core.mail import EmailMessage
 
-connection = get_connection(
-    backend="django_forwardemail.backends.ForwardEmailBackend",
-    fail_silently=False,
-)
+from django_forwardemail.backends import ForwardEmailBackend
+
+connection = ForwardEmailBackend(fail_silently=False)
 
 recipients = ["a@example.com", "b@example.com", "c@example.com"]
 
@@ -123,10 +124,11 @@ for address in recipients:
         body="A deployment completed successfully.",
         from_email="ops@example.com",
         to=[address],
-        connection=connection,
     )
-    message.send()
+    connection.send_messages([message])
 ```
+
+Constructing the backend directly avoids `get_connection()` and `EmailMessage(connection=...)`, both of which Django deprecated in 6.1 and removes in 7.0.
 
 <Callout type="warn">Do not assume a single `EmailMessage` with multiple `to` addresses will notify every recipient. The backend only uses the first address, so multi-recipient fan-out must happen in your application code.</Callout>
 

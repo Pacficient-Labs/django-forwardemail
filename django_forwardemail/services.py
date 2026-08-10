@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any, Optional
 import requests
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.core.mail.message import sanitize_address
 from django.http import HttpRequest
+
+from .utils import sanitize_address
 
 if TYPE_CHECKING:
     from django.contrib.sites.models import Site

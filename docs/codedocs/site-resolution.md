@@ -63,7 +63,7 @@ The code also makes one specific safety check: when resolving from `request`, it
 ## How It Relates to Other Concepts
 
 - `EmailConfiguration` depends on the resolved `Site`.
-- The backend passes `self.site` or `email_message.connection.site` into the service if available.
+- The backend passes the site from the message's own connection when one is set, otherwise `self.site`, into the service if available. The connection is read from the message's instance dict rather than the `EmailMessage.connection` property, which Django deprecated in 6.1 and removes in 7.0.
 - Guides for Celery and multi-site deployments usually pass `site` explicitly because workers should not rely on request state.
 
 ## How It Works Internally

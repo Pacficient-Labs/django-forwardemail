@@ -334,7 +334,8 @@ LOGGING = {
 ### Data Privacy
 - Email content is transmitted over HTTPS to the ForwardEmail API.
 - The package does not store email content locally.
-- Reply-to addresses are sanitized with Django's `sanitize_address`.
+- Reply-to addresses are sanitized with `django_forwardemail.utils.sanitize_address`,
+  which rejects newlines that would allow header injection.
 
 ## Performance and Async
 

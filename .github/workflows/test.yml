@@ -9,10 +9,24 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # `uv run` re-syncs the environment from uv.lock by default, which would
+    # undo the matrix Django pin installed below before any test runs.
+    env:
+      UV_NO_SYNC: "1"
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-        django-version: [4.2, 5.0, 5.1]
+        django-version: ["4.2", "5.1", "5.2", "6.0", "6.1"]
+        exclude:
+          # Django 6.0+ requires Python 3.12 or newer.
+          - django-version: "6.0"
+            python-version: "3.10"
+          - django-version: "6.0"
+            python-version: "3.11"
+          - django-version: "6.1"
+            python-version: "3.10"
+          - django-version: "6.1"
+            python-version: "3.11"
 
     steps:
     - uses: actions/checkout@v7
@@ -28,7 +42,11 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --extra dev
-        uv add "Django~=${{ matrix.django-version }}.0"
+        # `uv pip install`, not `uv add`: Django 6.0+ requires Python 3.12,
+        # which cannot be resolved against the project's `requires-python`.
+        # This must stay after `uv sync`, which ignores UV_NO_SYNC.
+        uv pip install "Django~=${{ matrix.django-version }}.0"
+        uv run python -c "import django; print('Testing against Django', django.get_version())"
 
     - name: Run Django checks
       run: |

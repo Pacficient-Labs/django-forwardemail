@@ -56,7 +56,7 @@ Sends one email through the ForwardEmail API after resolving the active site and
 | `text` | `str` | — | Plain-text body. |
 | `from_email` | `str \| None` | `None` | Optional sender override. If it lacks a display name, the configured `from_name` is prepended. |
 | `html` | `str \| None` | `None` | Optional HTML body. Added to the JSON payload only when present. |
-| `reply_to` | `str \| None` | `None` | Optional reply-to override. Falls back to the model value and is sanitized with `sanitize_address`. |
+| `reply_to` | `str \| None` | `None` | Optional reply-to override. Falls back to the model value and is sanitized with `django_forwardemail.utils.sanitize_address`. |
 | `request` | `HttpRequest \| None` | `None` | Request used for `get_current_site(request)` when `site` is not provided. |
 | `site` | `Site \| None` | `None` | Explicit site to use for configuration lookup. |
 | `base_url` | `str \| None` | `None` | Per-call API host override. |

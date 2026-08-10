@@ -1,17 +1,34 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
-from django.core.mail.message import (
-    EmailMessage,
-    EmailMultiAlternatives,
-    sanitize_address,
-)
+from django.core.mail.message import EmailMessage, EmailMultiAlternatives
 
 from .services import ForwardEmailService
+from .utils import sanitize_address
 
 if TYPE_CHECKING:
     from django.contrib.sites.models import Site
+
+
+def _message_connection(email_message: EmailMessage) -> Any:
+    """
+    Return the connection attached to a message, or None.
+
+    ``EmailMessage.connection`` is a deprecated property in Django 6.1+ that
+    emits a ``RemovedInDjango70Warning`` on every read, so the value is looked
+    up in the instance dict instead of going through the descriptor. Django
+    6.1+ stores it as ``_connection``; earlier versions use ``connection``.
+
+    Args:
+        email_message: Django EmailMessage object
+
+    Returns:
+        The message's email backend, or None if it has none
+    """
+    message_vars = vars(email_message)
+    return message_vars.get("_connection", message_vars.get("connection"))
 
 
 class ForwardEmailBackend(BaseEmailBackend):
@@ -28,10 +45,16 @@ class ForwardEmailBackend(BaseEmailBackend):
 
         Args:
             fail_silently: Whether to suppress exceptions
-            **kwargs: Additional keyword arguments, including 'site'
+            **kwargs: Additional keyword arguments, including 'site'. Anything
+                left over is forwarded to Django's base backend, which reports
+                unknown options for MAILERS aliases.
         """
-        super().__init__(fail_silently=fail_silently)
-        self.site: Site | None = kwargs.get("site", None)
+        self.site: Site | None = kwargs.pop("site", None)
+        super().__init__(**kwargs)
+        # ``BaseEmailBackend.fail_silently`` is deprecated in Django 6.1 and
+        # removed in 7.0: a backend that supports it must own the attribute.
+        # Set it after super().__init__(), which assigns it on older versions.
+        self.fail_silently = fail_silently
 
     def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
         """
@@ -76,19 +99,14 @@ class ForwardEmailBackend(BaseEmailBackend):
 
         # Get site from connection or instance; if neither is set, ForwardEmailService
         # will fall back to Site.objects.get_current() automatically.
-        site = None
-        if hasattr(email_message, "connection") and hasattr(
-            email_message.connection, "site"
-        ):
-            site = email_message.connection.site
-        else:
-            site = self.site
+        site = getattr(_message_connection(email_message), "site", None) or self.site
 
         # Get the from email; if absent, let the service use the config default.
         from_email = None
         if email_message.from_email:
             from_email = sanitize_address(
-                email_message.from_email, email_message.encoding
+                email_message.from_email,
+                email_message.encoding or settings.DEFAULT_CHARSET,
             )
             if from_email and "<" in from_email:
                 from_email = ForwardEmailService.extract_email(from_email)
