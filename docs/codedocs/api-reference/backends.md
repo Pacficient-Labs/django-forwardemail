@@ -47,6 +47,22 @@ connection = get_connection(
 )
 ```
 
+Django 6.1 deprecates `get_connection()` and removes it in Django 7.0. On Django 6.1+, register the backend as a `MAILERS` alias and reach it through `django.core.mail.mailers`:
+
+```python
+# settings.py
+MAILERS = {
+    "example": {"BACKEND": "django_forwardemail.backends.ForwardEmailBackend"},
+}
+
+# anywhere else
+from django.core.mail import mailers
+
+connection = mailers["example"]
+```
+
+You can also construct `ForwardEmailBackend(site=...)` directly, which works on every supported Django version.
+
 ## `send_messages`
 
 ```python
@@ -68,17 +84,21 @@ int
 Usage example:
 
 ```python
-from django.core.mail import EmailMessage, get_connection
+from django.core.mail import EmailMessage
 
-connection = get_connection(backend="django_forwardemail.backends.ForwardEmailBackend")
+from django_forwardemail.backends import ForwardEmailBackend
+
+connection = ForwardEmailBackend()
 
 messages = [
-    EmailMessage("One", "Body one", "from@example.com", ["a@example.com"], connection=connection),
-    EmailMessage("Two", "Body two", "from@example.com", ["b@example.com"], connection=connection),
+    EmailMessage("One", "Body one", "from@example.com", ["a@example.com"]),
+    EmailMessage("Two", "Body two", "from@example.com", ["b@example.com"]),
 ]
 
 sent = connection.send_messages(messages)
 ```
+
+Attaching a connection to individual messages (`EmailMessage(..., connection=...)`) still works, but Django deprecated `EmailMessage.connection` in 6.1 and removes it in 7.0. Sending through the connection directly, as above, is the forward-compatible form.
 
 ## Internal Helper: `_send`
 
@@ -86,7 +106,7 @@ sent = connection.send_messages(messages)
 
 - Returns `False` when `email_message.recipients()` is empty.
 - Chooses `email_message.to[0]` as the recipient.
-- Uses `email_message.connection.site` when present, else `self.site`.
+- Uses the site of the message's own connection when present, else `self.site`.
 - Sanitizes `from_email` and strips the display name with `ForwardEmailService.extract_email()`.
 - Reads `reply_to` first from `email_message.reply_to`, then from `extra_headers["Reply-To"]`.
 - Extracts the first `text/html` alternative from `EmailMultiAlternatives`.

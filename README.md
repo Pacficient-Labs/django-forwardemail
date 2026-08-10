@@ -315,6 +315,21 @@ The base URL for the ForwardEmail API. You typically don't need to change this u
 
 Set this to `'django_forwardemail.backends.ForwardEmailBackend'` to use ForwardEmail as your default email backend.
 
+### `MAILERS`
+
+Django 6.1 deprecates `EMAIL_BACKEND` in favour of `MAILERS` and removes it in Django 7.0. On Django 6.1+ you can configure the backend as a mailer alias instead:
+
+```python
+# settings.py
+MAILERS = {
+    'default': {
+        'BACKEND': 'django_forwardemail.backends.ForwardEmailBackend',
+    },
+}
+```
+
+Extra backend options go under `OPTIONS`, and unknown options are reported as an `InvalidMailer` error. Both settings are supported; use `EMAIL_BACKEND` if you also need to run on Django 6.0 or earlier.
+
 ## Development
 
 ### Running Tests

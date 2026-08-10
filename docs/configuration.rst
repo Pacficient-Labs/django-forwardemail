@@ -90,6 +90,26 @@ Set this to use ForwardEmail with Django's standard email functions:
    # settings.py
    EMAIL_BACKEND = 'django_forwardemail.backends.ForwardEmailBackend'
 
+``MAILERS``
+~~~~~~~~~~~
+
+Django 6.1 deprecates ``EMAIL_BACKEND`` in favour of ``MAILERS`` and removes it
+in Django 7.0. On Django 6.1 and later you can register the backend as a mailer
+alias instead:
+
+.. code-block:: python
+
+   # settings.py
+   MAILERS = {
+       'default': {
+           'BACKEND': 'django_forwardemail.backends.ForwardEmailBackend',
+       },
+   }
+
+Extra backend options go under ``OPTIONS``, and unknown options are reported as
+an ``InvalidMailer`` error. Both settings are supported; use ``EMAIL_BACKEND``
+if you also need to run on Django 6.0 or earlier.
+
 Site Detection Logic
 --------------------
 
